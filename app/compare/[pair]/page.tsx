@@ -46,11 +46,21 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { pair } = await params;
   const parsed = parsePair(pair);
-  if (!parsed) return { title: "Comparison not found — LiveCost" };
+  if (!parsed) {
+    return {
+      title: "Comparison not found — LiveCost",
+      robots: { index: false, follow: false },
+    };
+  }
 
   const [slugA, slugB] = parsed;
   const [a, b] = await Promise.all([getCityBySlug(slugA), getCityBySlug(slugB)]);
-  if (!a || !b) return { title: "Comparison not found — LiveCost" };
+  if (!a || !b) {
+    return {
+      title: "Comparison not found — LiveCost",
+      robots: { index: false, follow: false },
+    };
+  }
 
   const v = verdict(a.costs?.cost_index, b.costs?.cost_index);
   const year = a.costs?.year ?? b.costs?.year ?? new Date().getFullYear();

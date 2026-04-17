@@ -38,7 +38,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const city = await getCityBySlug(slug);
-  if (!city) return { title: "City not found — LiveCost" };
+  if (!city) {
+    return {
+      title: "City not found — LiveCost",
+      robots: { index: false, follow: false },
+    };
+  }
 
   const costs = city.costs;
   const year = costs?.year ?? new Date().getFullYear();
