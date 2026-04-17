@@ -54,7 +54,8 @@ const VAR = {
   edu24: "B15003_024E", // Professional
   edu25: "B15003_025E", // Doctorate
   eduUniverse: "B15003_001E",
-  commute: "B08303_001E",
+  commuteWorkers: "B08303_001E", // count of workers 16+ who didn't WFH
+  commuteAggregate: "B08013_001E", // aggregate travel time in minutes
 } as const;
 
 const VAR_LIST = Object.values(VAR);
@@ -305,6 +306,13 @@ function parsePlace(
     (num(v[VAR.edu25]) ?? 0);
   const eduUniverse = num(v[VAR.eduUniverse]);
 
+  const commuteWorkers = num(v[VAR.commuteWorkers]);
+  const commuteAggregate = num(v[VAR.commuteAggregate]);
+  const commuteMean =
+    commuteAggregate != null && commuteWorkers != null && commuteWorkers > 0
+      ? Number((commuteAggregate / commuteWorkers).toFixed(2))
+      : null;
+
   const housingIndex = ratio(rent, nationalMedianRent);
 
   // FIPS-derived state code from the raw row is authoritative; we also pass it in
@@ -335,7 +343,7 @@ function parsePlace(
       unemployment_rate: ratio(unemployed, laborForce),
       poverty_rate: ratio(povertyBelow, povertyUniverse),
       college_educated_pct: ratio(eduBachelorsPlus, eduUniverse),
-      commute_time_avg: num(v[VAR.commute]),
+      commute_time_avg: commuteMean,
       population_growth_pct: null,
     },
   };

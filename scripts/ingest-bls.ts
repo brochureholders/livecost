@@ -235,9 +235,7 @@ async function main() {
   type CostUpdate = {
     city_id: string;
     year: number;
-    cost_index: number | null;
     grocery_index: number | null;
-    housing_index: number | null;
     transportation_index: number | null;
     healthcare_index: number | null;
     data_source: string;
@@ -246,6 +244,12 @@ async function main() {
   const updates: CostUpdate[] = [];
   let metrosWithData = 0;
 
+  // NOTE: we deliberately do NOT write cost_index or housing_index here.
+  // Those fields are owned by the Census ingest (rent-based ratio), which
+  // is internally consistent across all 500 cities. BLS CPI-U levels are
+  // published with per-metro base periods, so ratio-ing them against the
+  // national CPI gives misleading relative values. Sub-indices are still
+  // useful as directional signals within the same category.
   for (const [code, meta] of Object.entries(METROS)) {
     const metroAll = valueByseries.get(seriesId(code, ITEM.allItems));
     if (metroAll == null) {
@@ -255,9 +259,7 @@ async function main() {
     metrosWithData++;
 
     const indices = {
-      cost_index: ratio(metroAll, nat.all),
       grocery_index: ratio(valueByseries.get(seriesId(code, ITEM.food)) ?? null, nat.food ?? null),
-      housing_index: ratio(valueByseries.get(seriesId(code, ITEM.housing)) ?? null, nat.housing ?? null),
       transportation_index: ratio(
         valueByseries.get(seriesId(code, ITEM.transport)) ?? null,
         nat.transport ?? null,
@@ -269,7 +271,7 @@ async function main() {
     };
 
     console.log(
-      `  ${code} ${meta.name}: cost_index=${indices.cost_index}, housing=${indices.housing_index}`,
+      `  ${code} ${meta.name}: grocery=${indices.grocery_index}, transport=${indices.transportation_index}, healthcare=${indices.healthcare_index}`,
     );
 
     for (const slug of meta.slugs) {
