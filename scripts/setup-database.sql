@@ -105,3 +105,27 @@ create table if not exists page_views (
 
 create index if not exists page_views_path_idx       on page_views (path);
 create index if not exists page_views_created_at_idx on page_views (created_at desc);
+
+-- Row-level security -------------------------------------------------------
+-- City data is public (Census + BLS). Allow anon SELECT on the read tables
+-- so the Next.js client (using the anon key) can read them. `page_views` is
+-- write-only via the service role key on the server; no anon policy.
+
+alter table cities             enable row level security;
+alter table city_costs         enable row level security;
+alter table city_demographics  enable row level security;
+alter table city_quality       enable row level security;
+alter table comparisons_cache  enable row level security;
+alter table page_views         enable row level security;
+
+drop policy if exists "public read cities"            on cities;
+drop policy if exists "public read city_costs"        on city_costs;
+drop policy if exists "public read city_demographics" on city_demographics;
+drop policy if exists "public read city_quality"      on city_quality;
+drop policy if exists "public read comparisons_cache" on comparisons_cache;
+
+create policy "public read cities"            on cities            for select using (true);
+create policy "public read city_costs"        on city_costs        for select using (true);
+create policy "public read city_demographics" on city_demographics for select using (true);
+create policy "public read city_quality"      on city_quality      for select using (true);
+create policy "public read comparisons_cache" on comparisons_cache for select using (true);
