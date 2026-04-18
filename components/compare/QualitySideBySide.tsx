@@ -94,14 +94,21 @@ export default function QualitySideBySide({ a, b }: Props) {
     },
   ];
 
-  const hasAny = sections.some((s) =>
+  const populated = sections.filter((s) =>
     s.rows.some((r) => r.aValue !== "—" || r.bValue !== "—"),
   );
-  if (!hasAny) return null;
+  if (populated.length === 0) return null;
+
+  const gridCols =
+    populated.length >= 3
+      ? "md:grid-cols-3"
+      : populated.length === 2
+        ? "md:grid-cols-2"
+        : "md:grid-cols-1";
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {sections.map((section) => (
+    <div className={`grid grid-cols-1 ${gridCols} gap-4`}>
+      {populated.map((section) => (
         <div
           key={section.title}
           className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6"
