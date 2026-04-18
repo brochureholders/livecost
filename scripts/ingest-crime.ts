@@ -131,19 +131,50 @@ function cityKey(name: string): string {
   );
 }
 
-/** Fuzzy-match a city name against agencies in the state. */
+/** Suffixes we accept on a municipal police agency name. */
+const AGENCY_SUFFIXES = [
+  "police department",
+  "metropolitan police department",
+  "consolidated police department",
+  "department of public safety",
+  "public safety",
+  "police",
+];
+
+/** Strict city→agency match. Returns the municipal/city police department
+ *  whose name is exactly "{city} [city] {suffix}", not some other city that
+ *  merely shares a prefix (e.g. New York ≠ New York Mills). */
 function findAgency(cityName: string, agencies: Agency[]): Agency | null {
   const key = cityKey(cityName);
-  const candidates = agencies.filter((a) => {
-    const name = normalize(a.agency_name);
-    return name.startsWith(key + " ") || name.startsWith(key + ",") || name === key;
-  });
-  // Prefer municipal/city PD over others (university, sheriff, etc.)
-  const city = candidates.find((c) =>
-    /^city|^municipal/i.test(c.agency_type_name) ||
-    /police department$/i.test(c.agency_name),
+  if (!key) return null;
+
+  // Build the set of acceptable regex patterns for exact-ish matches.
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const patterns = AGENCY_SUFFIXES.map(
+    (suffix) => new RegExp(`^${escaped}(\\s+city)?\\s+${suffix}$`, "i"),
   );
-  return city ?? candidates[0] ?? null;
+
+  // Collect candidates that match any of the patterns.
+  const strict = agencies.filter((a) => {
+    const name = normalize(a.agency_name);
+    return patterns.some((re) => re.test(name));
+  });
+
+  if (strict.length === 0) {
+    // Fallback: "city of {city} police department" variant
+    const cityOf = new RegExp(
+      `^city of ${escaped}(\\s+${AGENCY_SUFFIXES.join("|\\s+")})?$`,
+      "i",
+    );
+    const fallback = agencies.find((a) => cityOf.test(normalize(a.agency_name)));
+    return fallback ?? null;
+  }
+
+  // Rank: prefer "City"-type agencies over "County" / "Other" / "University".
+  const municipalType = strict.find((c) =>
+    /^city|^municipal/i.test(c.agency_type_name),
+  );
+  return municipalType ?? strict[0];
 }
 
 function sumMonthly(series: Record<string, number> | undefined): number | null {
