@@ -27,8 +27,11 @@ export const revalidate = 86400;
 
 type Params = { pair: string };
 
+// Pre-render the top-20 pairs only (190 pages) to keep the build fast.
+// Other pairs render on-demand via ISR after first hit; the sitemap still
+// surfaces all 19,900 canonical combinations for crawlers.
 export async function generateStaticParams(): Promise<Params[]> {
-  const slugs = await getTopCitySlugs(200);
+  const slugs = await getTopCitySlugs(20);
   slugs.sort();
   const params: Params[] = [];
   for (let i = 0; i < slugs.length; i++) {
