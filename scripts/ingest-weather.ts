@@ -30,8 +30,9 @@ const NORMAL_YEARS = 30;
 const GEOCODE_API = "https://geocoding-api.open-meteo.com/v1/search";
 const ARCHIVE_API = "https://archive-api.open-meteo.com/v1/archive";
 // Open-Meteo fair-use: <600/min, <5000/hr, <10k/day. Archive calls are
-// heavy (30yr daily data = ~400KB each), so keep well under those limits.
-const REQUEST_DELAY_MS = 700;
+// heavy (30yr daily data = ~400KB each), and the server aggressively
+// drops connections when we push past ~1 req/sec, so be conservative.
+const REQUEST_DELAY_MS = 2000;
 const MAX_RETRIES = 5;
 
 /** "Sunny day" threshold: daily sunshine duration in seconds. */
