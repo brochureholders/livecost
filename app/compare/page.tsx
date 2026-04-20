@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
-import { permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import { getCityOptions, getTopCitiesExcluding } from "@/lib/cities";
 import { canonicalizePair, formatPair } from "@/lib/comparison";
 import CompareForm from "@/components/compare/CompareForm";
 
-// /compare is dynamic per request because it handles ?from=X&to=Y by
-// redirecting to the canonical /compare/{pair} URL — a static ISR build
-// would cache the landing page and swallow the query string, breaking
-// the homepage form flow.
-export const dynamic = "force-dynamic";
+// The /compare?from=X&to=Y  →  /compare/{pair} canonical redirect is
+// handled by middleware.ts so it fires at the edge before any ISR
+// lookup. This page can stay statically rendered.
+export const revalidate = 86400;
 
 export const metadata: Metadata = {
   title:
@@ -47,15 +45,8 @@ export default async function ComparePage({
   searchParams: SearchParams;
 }) {
   const sp = await searchParams;
-
-  // Homepage/404 form posts to /compare?from=X&to=Y. Resolve immediately to
-  // the canonical pair URL so crawlers see a clean target and users don't
-  // see this landing page in the middle of a submit flow.
-  if (sp.from && sp.to && sp.from !== sp.to) {
-    const [x, y] = canonicalizePair(sp.from, sp.to);
-    permanentRedirect(`/compare/${formatPair(x, y)}`);
-  }
-
+  // ?from=&to=&mismatch is already redirected by middleware.ts. If either
+  // param arrives here alone (partial submit), pre-fill the form with it.
   const cities = await getCityOptions(500);
   const topCitiesForGrid = await getTopCitiesExcluding([], 12);
 
