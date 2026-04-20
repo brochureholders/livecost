@@ -63,6 +63,26 @@ export default function QualitySideBySide({ a, b }: Props) {
       ],
     },
     {
+      title: "Livability",
+      rows: [
+        {
+          label: "Walk Score",
+          aValue: num(a.quality?.walk_score, 0, "/100"),
+          bValue: num(b.quality?.walk_score, 0, "/100"),
+        },
+        {
+          label: "Transit Score",
+          aValue: num(a.quality?.transit_score, 0, "/100"),
+          bValue: num(b.quality?.transit_score, 0, "/100"),
+        },
+        {
+          label: "Bike Score",
+          aValue: num(a.quality?.bike_score, 0, "/100"),
+          bValue: num(b.quality?.bike_score, 0, "/100"),
+        },
+      ],
+    },
+    {
       title: "Demographics",
       rows: [
         {

@@ -75,4 +75,6 @@ export type CityQuality = {
   sunshine_days: number | null;
   air_quality_index: number | null;
   walk_score: number | null;
+  transit_score: number | null;
+  bike_score: number | null;
 };

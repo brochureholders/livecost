@@ -18,7 +18,11 @@ export default function QualityOfLife({ quality }: Props) {
     quality.violent_crime_rate != null ||
     quality.property_crime_rate != null;
 
-  const hasWalk = quality.walk_score != null || quality.air_quality_index != null;
+  const hasWalk =
+    quality.walk_score != null ||
+    quality.transit_score != null ||
+    quality.bike_score != null ||
+    quality.air_quality_index != null;
 
   if (!hasClimate && !hasSafety && !hasWalk) return null;
 
@@ -108,6 +112,20 @@ export default function QualityOfLife({ quality }: Props) {
               <li className="flex justify-between">
                 <span className="text-[var(--muted)]">Walk Score</span>
                 <span className="tabular-nums">{quality.walk_score} / 100</span>
+              </li>
+            )}
+            {quality.transit_score != null && (
+              <li className="flex justify-between">
+                <span className="text-[var(--muted)]">Transit Score</span>
+                <span className="tabular-nums">
+                  {quality.transit_score} / 100
+                </span>
+              </li>
+            )}
+            {quality.bike_score != null && (
+              <li className="flex justify-between">
+                <span className="text-[var(--muted)]">Bike Score</span>
+                <span className="tabular-nums">{quality.bike_score} / 100</span>
               </li>
             )}
             {quality.air_quality_index != null && (

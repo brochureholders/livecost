@@ -73,8 +73,14 @@ create table if not exists city_quality (
   sunshine_days         integer,
   air_quality_index     numeric(6, 2),
   walk_score            integer,
+  transit_score         integer,
+  bike_score            integer,
   unique (city_id, year)
 );
+
+-- Columns added after initial schema. Safe to re-run.
+alter table city_quality add column if not exists transit_score integer;
+alter table city_quality add column if not exists bike_score    integer;
 
 create index if not exists city_quality_city_year_idx on city_quality (city_id, year);
 
