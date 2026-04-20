@@ -1,135 +1,140 @@
 import type { Metadata } from "next";
+import { permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import { getNationalRanking, type RankingSort } from "@/lib/cities";
 import { STATES } from "@/lib/states";
-import RankedTable from "@/components/ranking/RankedTable";
 
 export const revalidate = 86400;
 
+export const metadata: Metadata = {
+  title: "US Cost of Living Rankings (2026) — Cheapest, Priciest, Highest Income | LiveCost",
+  description:
+    "The cheapest, most expensive, highest-income, and lowest-rent US cities — four national rankings built from Census ACS and BLS data.",
+  alternates: { canonical: "/rankings" },
+  openGraph: {
+    title: "US Cost of Living Rankings (2026)",
+    description:
+      "Cheapest, priciest, highest-income, and lowest-rent US cities — four rankings, one page.",
+    type: "website",
+  },
+};
+
 type Params = { sort?: string };
 
-const SORTS: Array<{
-  value: RankingSort;
+const SORT_REDIRECT: Record<string, string> = {
+  cheapest: "/rankings/cheapest-cities",
+  expensive: "/rankings/most-expensive-cities",
+  "income-high": "/rankings/highest-income-cities",
+  "rent-low": "/rankings/cheapest-rent-cities",
+};
+
+type RankingCard = {
+  href: string;
   label: string;
-  hint: string;
+  headline: string;
+  sort: RankingSort;
   eyebrow: string;
-}> = [
+};
+
+const CARDS: RankingCard[] = [
   {
-    value: "cheapest",
-    label: "Cheapest",
-    hint: "Lowest cost-of-living index",
-    eyebrow: "Most affordable US cities",
+    href: "/rankings/cheapest-cities",
+    label: "Cheapest cities",
+    headline: "Lowest overall cost of living",
+    sort: "cheapest",
+    eyebrow: "Most affordable",
   },
   {
-    value: "expensive",
-    label: "Most expensive",
-    hint: "Highest cost-of-living index",
-    eyebrow: "Priciest US cities",
+    href: "/rankings/most-expensive-cities",
+    label: "Most expensive cities",
+    headline: "Highest overall cost of living",
+    sort: "expensive",
+    eyebrow: "Priciest",
   },
   {
-    value: "income-high",
-    label: "Highest incomes",
-    hint: "Highest median household income",
-    eyebrow: "Highest-earning US cities",
+    href: "/rankings/highest-income-cities",
+    label: "Highest-income cities",
+    headline: "Top median household incomes",
+    sort: "income-high",
+    eyebrow: "Wealthiest",
   },
   {
-    value: "rent-low",
+    href: "/rankings/cheapest-rent-cities",
     label: "Cheapest rent",
-    hint: "Lowest median rent",
-    eyebrow: "Lowest-rent US cities",
+    headline: "Lowest median monthly rent",
+    sort: "rent-low",
+    eyebrow: "Cheapest rent",
   },
 ];
 
-function resolveSort(raw: string | undefined): (typeof SORTS)[number] {
-  const match = SORTS.find((s) => s.value === raw);
-  return match ?? SORTS[0];
+const CURRENCY = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+
+function teaserValue(sort: RankingSort, city: {
+  cost_index: number | null;
+  median_rent: number | null;
+  median_household_income: number | null;
+}): string {
+  switch (sort) {
+    case "cheapest":
+    case "expensive":
+      return city.cost_index != null ? city.cost_index.toFixed(0) : "—";
+    case "income-high":
+      return city.median_household_income != null
+        ? CURRENCY.format(city.median_household_income)
+        : "—";
+    case "rent-low":
+      return city.median_rent != null
+        ? `${CURRENCY.format(city.median_rent)}/mo`
+        : "—";
+  }
 }
 
-const TITLES: Record<RankingSort, string> = {
-  cheapest:
-    "Cheapest Cities to Live in the US (2026) — Ranked by Cost of Living | LiveCost",
-  expensive:
-    "Most Expensive US Cities (2026) — Ranked by Cost of Living | LiveCost",
-  "income-high":
-    "Highest-Income US Cities (2026) — Ranked by Median Household Income | LiveCost",
-  "rent-low":
-    "Cheapest Rent in the US (2026) — Cities Ranked by Median Rent | LiveCost",
-};
-
-export async function generateMetadata({
-  searchParams,
-}: {
-  searchParams: Promise<Params>;
-}): Promise<Metadata> {
-  const sp = await searchParams;
-  const sort = resolveSort(sp.sort);
-  const cities = await getNationalRanking(sort.value, 100);
-  const top = cities[0];
-
-  const description = top
-    ? `${top.name}, ${top.state_code} tops the ranking. See all 100 US cities ranked by ${sort.hint.toLowerCase()}.`
-    : `Every major US city ranked by ${sort.hint.toLowerCase()}.`;
-
-  // Base ranking always resolves to /rankings; sort variants live behind query
-  // strings but we canonicalize to the shortest form to avoid duplicate-content
-  // penalties on ?sort=cheapest which equals the default.
-  const canonical =
-    sort.value === "cheapest" ? "/rankings" : `/rankings?sort=${sort.value}`;
-
-  return {
-    title: TITLES[sort.value],
-    description,
-    alternates: { canonical },
-    openGraph: {
-      title: TITLES[sort.value],
-      description,
-      type: "article",
-    },
-  };
-}
-
-export default async function RankingsPage({
+export default async function RankingsHub({
   searchParams,
 }: {
   searchParams: Promise<Params>;
 }) {
   const sp = await searchParams;
-  const sort = resolveSort(sp.sort);
-  const cities = await getNationalRanking(sort.value, 100);
+  // Old ?sort=... variants move to their dedicated path URLs. 308 keeps the
+  // query-string URLs' inbound SEO equity flowing to the canonical page.
+  if (sp.sort && SORT_REDIRECT[sp.sort]) {
+    permanentRedirect(SORT_REDIRECT[sp.sort]);
+  }
+
+  // Load all four rankings in parallel for the teaser cards.
+  const [cheapest, expensive, income, rent] = await Promise.all([
+    getNationalRanking("cheapest", 5),
+    getNationalRanking("expensive", 5),
+    getNationalRanking("income-high", 5),
+    getNationalRanking("rent-low", 5),
+  ]);
+  const topByVariant: Record<RankingSort, typeof cheapest> = {
+    cheapest,
+    expensive,
+    "income-high": income,
+    "rent-low": rent,
+  };
 
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: `National ranking — ${sort.label}`,
-    numberOfItems: cities.length,
-    itemListElement: cities.slice(0, 20).map((c, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      name: `${c.name}, ${c.state_code}`,
-      url: `/cost-of-living/${c.slug}`,
+    "@type": "CollectionPage",
+    name: "US Cost of Living Rankings",
+    hasPart: CARDS.map((c) => ({
+      "@type": "WebPage",
+      name: c.label,
+      url: c.href,
     })),
   };
-
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: "/" },
-      { "@type": "ListItem", position: 2, name: "Rankings" },
-    ],
-  };
-
-  const anchorSlug = cities[0]?.slug;
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8 md:py-12">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
 
       <nav aria-label="Breadcrumb" className="text-sm text-[var(--muted)]">
@@ -146,53 +151,71 @@ export default async function RankingsPage({
 
       <section className="mt-8 md:mt-12">
         <p className="text-sm font-medium uppercase tracking-widest text-[var(--accent)]">
-          National ranking
+          National rankings
         </p>
         <h1 className="mt-3 text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05]">
-          {sort.eyebrow}
+          US cost of living rankings
         </h1>
         <p className="mt-4 max-w-2xl text-lg text-[var(--muted)]">
-          {cities.length > 0
-            ? `Top ${cities.length} US cities ranked by ${sort.hint.toLowerCase()}, based on the latest Census ACS and BLS data.`
-            : `Rankings will appear here once the ingest scripts run.`}
+          Four rankings of the top US cities — by affordability, income, and
+          rent. Built from Census ACS and BLS data for every major metro.
         </p>
       </section>
 
-      <nav
-        aria-label="Ranking sort"
-        className="mt-8 flex flex-wrap gap-2 border-b border-[var(--border)] pb-3"
-      >
-        {SORTS.map((s) => {
-          const active = s.value === sort.value;
+      <section className="mt-12 grid gap-6 md:grid-cols-2">
+        {CARDS.map((card) => {
+          const rows = topByVariant[card.sort];
           return (
             <Link
-              key={s.value}
-              href={s.value === "cheapest" ? "/rankings" : `/rankings?sort=${s.value}`}
-              aria-current={active ? "page" : undefined}
-              className={`inline-flex flex-col rounded-lg px-4 py-2 text-sm transition-colors ${
-                active
-                  ? "bg-[var(--accent)] text-white"
-                  : "border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              }`}
+              key={card.sort}
+              href={card.href}
+              className="group block rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 hover:border-[var(--accent)] transition-colors"
             >
-              <span className="font-medium">{s.label}</span>
-              <span
-                className={`text-xs ${active ? "text-white/80" : "text-[var(--muted)]"}`}
-              >
-                {s.hint}
+              <p className="text-xs font-semibold uppercase tracking-widest text-[var(--accent)]">
+                {card.eyebrow}
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+                {card.label}
+              </h2>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                {card.headline}
+              </p>
+
+              <ol className="mt-5 space-y-2 text-sm">
+                {rows.map((city, i) => (
+                  <li
+                    key={city.id}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <span className="flex min-w-0 items-baseline gap-2">
+                      <span className="w-6 text-right tabular-nums text-[var(--muted)]">
+                        {i + 1}
+                      </span>
+                      <span className="truncate font-medium">
+                        {city.name}{" "}
+                        <span className="text-[var(--muted)] font-normal">
+                          {city.state_code}
+                        </span>
+                      </span>
+                    </span>
+                    <span className="tabular-nums text-[var(--muted)]">
+                      {teaserValue(card.sort, city)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+
+              <span className="mt-5 inline-block text-sm font-medium text-[var(--accent)] group-hover:text-[var(--accent-hover)]">
+                See full top 100 →
               </span>
             </Link>
           );
         })}
-      </nav>
-
-      <section className="mt-6">
-        <RankedTable cities={cities} anchorSlug={anchorSlug} showState />
       </section>
 
       <section className="mt-16">
         <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
-          By state
+          Rankings by state
         </h2>
         <p className="mt-2 text-[var(--muted)]">
           See how cities stack up inside each state.
