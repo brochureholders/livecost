@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import CityCard from "@/components/CityCard";
+import CompareForm from "@/components/compare/CompareForm";
+import { getCityOptions } from "@/lib/cities";
 import { featuredCities, popularComparisons } from "@/data/featured-cities";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-export default function Home() {
+export default async function Home() {
+  const cities = await getCityOptions(500);
   return (
     <div className="mx-auto max-w-6xl px-6">
       <section className="py-20 md:py-28">
@@ -23,37 +26,9 @@ export default function Home() {
             for every major metro. Real numbers, updated monthly from Census
             and BLS data.
           </p>
-          <form
-            action="/compare"
-            className="mt-10 flex flex-col sm:flex-row gap-3 max-w-2xl"
-          >
-            <label htmlFor="city-a" className="sr-only">
-              From city
-            </label>
-            <input
-              id="city-a"
-              name="from"
-              type="text"
-              placeholder="Enter a city, e.g. Austin, TX"
-              className="flex-1 h-12 px-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--accent)]"
-            />
-            <label htmlFor="city-b" className="sr-only">
-              To city
-            </label>
-            <input
-              id="city-b"
-              name="to"
-              type="text"
-              placeholder="Compare to, e.g. Denver, CO"
-              className="flex-1 h-12 px-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--accent)]"
-            />
-            <button
-              type="submit"
-              className="h-12 px-6 rounded-lg bg-[var(--accent)] text-white font-medium hover:bg-[var(--accent-hover)] transition-colors"
-            >
-              Compare
-            </button>
-          </form>
+          <div className="mt-10 max-w-2xl">
+            <CompareForm cities={cities} />
+          </div>
         </div>
       </section>
 
