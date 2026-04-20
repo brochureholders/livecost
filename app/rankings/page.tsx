@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import { getNationalRanking, type RankingSort } from "@/lib/cities";
 import { STATES } from "@/lib/states";
@@ -7,7 +6,8 @@ import { STATES } from "@/lib/states";
 export const revalidate = 86400;
 
 export const metadata: Metadata = {
-  title: "US Cost of Living Rankings (2026) — Cheapest, Priciest, Highest Income | LiveCost",
+  title:
+    "US Cost of Living Rankings (2026) — Cheapest, Priciest, Highest Income | LiveCost",
   description:
     "The cheapest, most expensive, highest-income, and lowest-rent US cities — four national rankings built from Census ACS and BLS data.",
   alternates: { canonical: "/rankings" },
@@ -17,15 +17,6 @@ export const metadata: Metadata = {
       "Cheapest, priciest, highest-income, and lowest-rent US cities — four rankings, one page.",
     type: "website",
   },
-};
-
-type Params = { sort?: string };
-
-const SORT_REDIRECT: Record<string, string> = {
-  cheapest: "/rankings/cheapest-cities",
-  expensive: "/rankings/most-expensive-cities",
-  "income-high": "/rankings/highest-income-cities",
-  "rent-low": "/rankings/cheapest-rent-cities",
 };
 
 type RankingCard = {
@@ -93,17 +84,11 @@ function teaserValue(sort: RankingSort, city: {
   }
 }
 
-export default async function RankingsHub({
-  searchParams,
-}: {
-  searchParams: Promise<Params>;
-}) {
-  const sp = await searchParams;
-  // Old ?sort=... variants move to their dedicated path URLs. 308 keeps the
-  // query-string URLs' inbound SEO equity flowing to the canonical page.
-  if (sp.sort && SORT_REDIRECT[sp.sort]) {
-    permanentRedirect(SORT_REDIRECT[sp.sort]);
-  }
+export default async function RankingsHub() {
+  // `?sort=...` URL variants are 308-redirected to their SEO-targeted
+  // detail pages via next.config.ts redirects (runs at the edge before
+  // ISR can serve a cached response), so we don't need to handle them
+  // here.
 
   // Load all four rankings in parallel for the teaser cards.
   const [cheapest, expensive, income, rent] = await Promise.all([
