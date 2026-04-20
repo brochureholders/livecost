@@ -153,6 +153,75 @@ export async function getCityOptions(limit = 500): Promise<CityOption[]> {
   return mapped.length > 0 ? mapped : DEMO_OPTIONS;
 }
 
+export type RankingSort = "cheapest" | "expensive" | "income-high" | "rent-low";
+
+export async function getNationalRanking(
+  sort: RankingSort,
+  limit = 100,
+): Promise<CitySummary[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from("cities")
+    .select(
+      `
+      id, name, slug, state, state_code, population,
+      city_costs(year, cost_index, median_rent, median_household_income)
+    `,
+    );
+  if (error || !data) return [];
+
+  const summaries: CitySummary[] = data.map((row) => {
+    const costs = (row.city_costs ?? []) as Pick<
+      CityCosts,
+      "year" | "cost_index" | "median_rent" | "median_household_income"
+    >[];
+    const latestCosts = latest(costs);
+    return {
+      id: row.id as string,
+      name: row.name as string,
+      slug: row.slug as string,
+      state: row.state as string,
+      state_code: row.state_code as string,
+      population: row.population as number | null,
+      cost_index: latestCosts?.cost_index ?? null,
+      median_rent: latestCosts?.median_rent ?? null,
+      median_household_income: latestCosts?.median_household_income ?? null,
+    };
+  });
+
+  const nullsLast =
+    <T, K extends keyof T>(key: K, asc: boolean) =>
+    (a: T, b: T) => {
+      const av = a[key];
+      const bv = b[key];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === "number" && typeof bv === "number") {
+        return asc ? av - bv : bv - av;
+      }
+      return 0;
+    };
+
+  let compare: (a: CitySummary, b: CitySummary) => number;
+  switch (sort) {
+    case "cheapest":
+      compare = nullsLast("cost_index", true);
+      break;
+    case "expensive":
+      compare = nullsLast("cost_index", false);
+      break;
+    case "income-high":
+      compare = nullsLast("median_household_income", false);
+      break;
+    case "rent-low":
+      compare = nullsLast("median_rent", true);
+      break;
+  }
+
+  return summaries.sort(compare).slice(0, limit);
+}
+
 export async function getTopCitiesExcluding(
   excludeIds: string[],
   limit = 10,
