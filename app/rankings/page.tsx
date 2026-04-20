@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getNationalRanking, type RankingSort } from "@/lib/cities";
-import { STATES } from "@/lib/states";
 
 export const revalidate = 86400;
 
@@ -198,26 +197,6 @@ export default async function RankingsHub() {
         })}
       </section>
 
-      <section className="mt-16">
-        <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
-          Rankings by state
-        </h2>
-        <p className="mt-2 text-[var(--muted)]">
-          See how cities stack up inside each state.
-        </p>
-        <ul className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-          {STATES.map((state) => (
-            <li key={state.code}>
-              <Link
-                href={`/cheapest-cities/${state.slug}`}
-                className="block rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
-              >
-                {state.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
     </div>
   );
 }
