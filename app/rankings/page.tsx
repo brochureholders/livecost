@@ -187,7 +187,7 @@ export default async function RankingsPage({
       </nav>
 
       <section className="mt-6">
-        <RankedTable cities={cities} anchorSlug={anchorSlug} />
+        <RankedTable cities={cities} anchorSlug={anchorSlug} showState />
       </section>
 
       <section className="mt-16">

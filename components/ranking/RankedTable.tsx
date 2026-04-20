@@ -5,6 +5,10 @@ import { canonicalizePair, formatPair } from "@/lib/comparison";
 type Props = {
   cities: CitySummary[];
   anchorSlug?: string;
+  /** Show the state code next to each city. Turn on for national rankings
+   *  where city names (Portland, Springfield, Columbia…) would otherwise be
+   *  ambiguous; leave off on state-scoped pages where it's redundant. */
+  showState?: boolean;
 };
 
 const CURRENCY = new Intl.NumberFormat("en-US", {
@@ -27,7 +31,11 @@ function indexClasses(index: number | null) {
   return "text-red-700";
 }
 
-export default function RankedTable({ cities, anchorSlug }: Props) {
+export default function RankedTable({
+  cities,
+  anchorSlug,
+  showState = false,
+}: Props) {
   if (cities.length === 0) {
     return (
       <p className="text-sm text-[var(--muted)] italic">
@@ -70,6 +78,11 @@ export default function RankedTable({ cities, anchorSlug }: Props) {
                     className="font-medium hover:text-[var(--accent)]"
                   >
                     {c.name}
+                    {showState && (
+                      <span className="ml-1.5 text-[var(--muted)] font-normal">
+                        {c.state_code}
+                      </span>
+                    )}
                   </Link>
                 </td>
                 <td
