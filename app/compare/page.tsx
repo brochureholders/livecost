@@ -5,7 +5,11 @@ import { getCityOptions, getTopCitiesExcluding } from "@/lib/cities";
 import { canonicalizePair, formatPair } from "@/lib/comparison";
 import CompareForm from "@/components/compare/CompareForm";
 
-export const revalidate = 86400;
+// /compare is dynamic per request because it handles ?from=X&to=Y by
+// redirecting to the canonical /compare/{pair} URL — a static ISR build
+// would cache the landing page and swallow the query string, breaking
+// the homepage form flow.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title:
