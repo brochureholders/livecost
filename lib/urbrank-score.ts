@@ -137,7 +137,12 @@ export function invertPercentile(p: number): number {
 }
 
 /** Raw climate quality score (0-100) from temps + precipitation.
- *  Penalizes hot summers, cold winters, and extreme rainfall. */
+ *  Penalizes hot summers, cold winters, and extreme rainfall.
+ *
+ *  Asymmetric: cold winters are penalized more than cool summers, and hot
+ *  summers more than warm winters. The ideal is ~50-82F year-round.
+ *  A Cleveland-type winter (low ~20F) should cost ~15-20 points, not 6.
+ */
 export function rawClimateScore(
   summerHigh: number | null,
   winterLow: number | null,
@@ -146,16 +151,33 @@ export function rawClimateScore(
   if (summerHigh == null && winterLow == null) return null;
   let score = 100;
 
-  // Ideal summer high ~82°F; penalty grows quadratically.
+  // Summer highs: ideal ~82°F. Heat hurts more than cool does.
   if (summerHigh != null) {
-    const dev = Math.abs(summerHigh - 82);
-    score -= Math.min(35, (dev * dev) / 50);
+    if (summerHigh > 82) {
+      // Each °F above 82 costs ~0.9 points, quadratic growth.
+      const dev = summerHigh - 82;
+      score -= Math.min(35, (dev * dev) / 20);
+    } else if (summerHigh < 60) {
+      // Very cool summers (<60) penalized lightly — rare and mild-climate.
+      const dev = 60 - summerHigh;
+      score -= Math.min(10, dev * 0.5);
+    }
   }
-  // Ideal winter low ~38°F; same treatment.
+
+  // Winter lows: ideal ~38°F. Cold hurts more than mild does.
   if (winterLow != null) {
-    const dev = Math.abs(winterLow - 38);
-    score -= Math.min(35, (dev * dev) / 50);
+    if (winterLow < 38) {
+      // Each °F below 38 costs ~1 point, quadratic growth so extreme cold
+      // (Minneapolis ~7F = deviation 31) caps at 35.
+      const dev = 38 - winterLow;
+      score -= Math.min(35, (dev * dev) / 18);
+    } else if (winterLow > 65) {
+      // Tropical winters (>65) — not everyone loves 70F Decembers.
+      const dev = winterLow - 65;
+      score -= Math.min(15, dev * 0.8);
+    }
   }
+
   // Precipitation extremes get a flat penalty.
   if (annualPrecipIn != null) {
     if (annualPrecipIn < 15 || annualPrecipIn > 70) score -= 10;

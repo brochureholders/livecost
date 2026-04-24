@@ -110,20 +110,75 @@ async function main() {
   const cities = (raw ?? []) as unknown as CityRow[];
   console.log(`Loaded ${cities.length} cities.\n`);
 
+  // Only 179/498 cities have NCEI temp data. Without a fallback, the
+  // ~320 cities with null climate drop that dimension entirely and their
+  // remaining dimensions get re-weighted — which means cheap-but-cold
+  // Midwest suburbs (Parma OH, etc.) end up topping climate-weighted
+  // rankings like retirees and remote workers. Fix: fall back to each
+  // state's average temperature from cities in the same state that DO
+  // have data. Coarser than real NCEI station data but still a real
+  // geographic signal, and it keeps every city scorable.
+  const stateClimateAgg = new Map<
+    string,
+    { summer: number[]; winter: number[]; precip: number[] }
+  >();
+  for (const city of cities) {
+    const qual = latest(city.city_quality);
+    if (!qual) continue;
+    const sc = city.state_code;
+    if (!stateClimateAgg.has(sc))
+      stateClimateAgg.set(sc, { summer: [], winter: [], precip: [] });
+    const agg = stateClimateAgg.get(sc)!;
+    if (qual.avg_temp_summer != null) agg.summer.push(qual.avg_temp_summer);
+    if (qual.avg_temp_winter != null) agg.winter.push(qual.avg_temp_winter);
+    if (qual.annual_precipitation != null) agg.precip.push(qual.annual_precipitation);
+  }
+  function avg(xs: number[]): number | null {
+    if (xs.length === 0) return null;
+    return xs.reduce((s, x) => s + x, 0) / xs.length;
+  }
+  const stateClimate = new Map<
+    string,
+    {
+      summer: number | null;
+      winter: number | null;
+      precip: number | null;
+    }
+  >();
+  for (const [sc, agg] of stateClimateAgg) {
+    stateClimate.set(sc, {
+      summer: avg(agg.summer),
+      winter: avg(agg.winter),
+      precip: avg(agg.precip),
+    });
+  }
+
   // Collect raw per-city values
+  let climateFallbackCount = 0;
   const perCity: PerCityRaw[] = cities.map((city) => {
     const cost = latest(city.city_costs);
     const demo = latest(city.city_demographics);
     const qual = latest(city.city_quality);
+    // Climate with state-average fallback. A city that has real NCEI data
+    // uses it; a city that doesn't uses the state average, which typically
+    // comes from 2-5 in-state cities with real data.
+    let summer = qual?.avg_temp_summer ?? null;
+    let winter = qual?.avg_temp_winter ?? null;
+    let precip = qual?.annual_precipitation ?? null;
+    if (summer == null || winter == null) {
+      const fallback = stateClimate.get(city.state_code);
+      if (fallback) {
+        if (summer == null && fallback.summer != null) summer = fallback.summer;
+        if (winter == null && fallback.winter != null) winter = fallback.winter;
+        if (precip == null && fallback.precip != null) precip = fallback.precip;
+        climateFallbackCount++;
+      }
+    }
     return {
       city,
       cost_index: cost?.cost_index ?? null,
       crime: qual?.crime_rate_per_100k ?? null,
-      climate: rawClimateScore(
-        qual?.avg_temp_summer ?? null,
-        qual?.avg_temp_winter ?? null,
-        qual?.annual_precipitation ?? null,
-      ),
+      climate: rawClimateScore(summer, winter, precip),
       walk: qual?.walk_score ?? null,
       job_market: rawJobMarketScore(
         demo?.unemployment_rate ?? null,
@@ -133,6 +188,9 @@ async function main() {
       education: demo?.college_educated_pct ?? null,
     };
   });
+  console.log(
+    `  ${climateFallbackCount} cities using state-average climate fallback\n`,
+  );
 
   // Build sorted arrays for percentile-rank normalization
   const sorted = (key: keyof PerCityRaw): number[] =>
