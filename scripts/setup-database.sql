@@ -112,6 +112,25 @@ create table if not exists page_views (
 create index if not exists page_views_path_idx       on page_views (path);
 create index if not exists page_views_created_at_idx on page_views (created_at desc);
 
+-- urbrank_scores -----------------------------------------------------------
+-- Computed UrbRank Score per (city, profile) pair. Populated by
+-- scripts/compute-urbrank-scores.ts from city_costs + city_demographics +
+-- city_quality. Drives /should-i-move-to and /best-cities pages.
+create table if not exists urbrank_scores (
+  id                uuid primary key default gen_random_uuid(),
+  city_id           uuid not null references cities(id) on delete cascade,
+  profile           text not null,          -- general|family|retiree|remote_worker|young_professional
+  score             numeric(5, 2) not null, -- 0.00-100.00
+  grade             text not null,          -- A+, A, A-, B+, ...
+  national_rank     integer,                -- 1..N within this profile
+  dimension_scores  jsonb not null,         -- { affordability: 78, safety: 62, ... }
+  computed_at       timestamptz not null default now(),
+  unique (city_id, profile)
+);
+
+create index if not exists urbrank_scores_profile_score_idx on urbrank_scores (profile, score desc);
+create index if not exists urbrank_scores_city_profile_idx on urbrank_scores (city_id, profile);
+
 -- Row-level security -------------------------------------------------------
 -- City data is public (Census + BLS). Allow anon SELECT on the read tables
 -- so the Next.js client (using the anon key) can read them. `page_views` is
@@ -123,15 +142,18 @@ alter table city_demographics  enable row level security;
 alter table city_quality       enable row level security;
 alter table comparisons_cache  enable row level security;
 alter table page_views         enable row level security;
+alter table urbrank_scores     enable row level security;
 
 drop policy if exists "public read cities"            on cities;
 drop policy if exists "public read city_costs"        on city_costs;
 drop policy if exists "public read city_demographics" on city_demographics;
 drop policy if exists "public read city_quality"      on city_quality;
 drop policy if exists "public read comparisons_cache" on comparisons_cache;
+drop policy if exists "public read urbrank_scores"    on urbrank_scores;
 
 create policy "public read cities"            on cities            for select using (true);
 create policy "public read city_costs"        on city_costs        for select using (true);
 create policy "public read city_demographics" on city_demographics for select using (true);
 create policy "public read city_quality"      on city_quality      for select using (true);
 create policy "public read comparisons_cache" on comparisons_cache for select using (true);
+create policy "public read urbrank_scores"    on urbrank_scores    for select using (true);
