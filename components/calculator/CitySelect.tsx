@@ -35,13 +35,15 @@ export default function CitySelect({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return cities.slice(0, 20);
-    return cities
-      .filter((c) => {
-        const hay = `${c.name} ${c.state} ${c.state_code}`.toLowerCase();
-        return hay.includes(q);
-      })
-      .slice(0, 20);
+    // Empty query: show the top ~100 by population (cities are already
+    // ordered that way from getCityOptions) so the dropdown opens with a
+    // useful list without being overwhelming. Any search surfaces every
+    // match in the full 500-city set.
+    if (!q) return cities.slice(0, 100);
+    return cities.filter((c) => {
+      const hay = `${c.name} ${c.state} ${c.state_code}`.toLowerCase();
+      return hay.includes(q);
+    });
   }, [query, cities]);
 
   // Close on outside click
