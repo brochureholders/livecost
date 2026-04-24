@@ -126,8 +126,14 @@ export default async function CityProfilePage({
             Part of the {city.metro_area} metro area
           </p>
         )}
-        <div className="mt-8">
+        <div className="mt-8 flex flex-wrap items-center gap-4">
           <AffordabilityBadge index={costs?.cost_index ?? null} />
+          <a
+            href={`/should-i-move-to/${city.slug}`}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--accent)] text-[var(--accent)] text-sm font-medium hover:bg-[var(--accent)] hover:text-white transition-colors"
+          >
+            See UrbRank Score →
+          </a>
         </div>
       </section>
 

@@ -7,11 +7,23 @@ export const revalidate = 86400;
 export async function GET() {
   const today = new Date().toISOString().slice(0, 10);
   const slugs = await getTopCitySlugs(SITEMAP.profilesLimit);
-  const urls: SitemapUrl[] = slugs.map((slug) => ({
-    path: `/cost-of-living/${slug}`,
-    lastmod: today,
-    changefreq: "monthly",
-    priority: 0.8,
-  }));
+  const urls: SitemapUrl[] = [];
+  for (const slug of slugs) {
+    urls.push({
+      path: `/cost-of-living/${slug}`,
+      lastmod: today,
+      changefreq: "monthly",
+      priority: 0.8,
+    });
+  }
+  // UrbRank Score pages — one per top 300 cities (matches generateStaticParams).
+  for (const slug of slugs.slice(0, 300)) {
+    urls.push({
+      path: `/should-i-move-to/${slug}`,
+      lastmod: today,
+      changefreq: "monthly",
+      priority: 0.8,
+    });
+  }
   return xmlResponse(urlsetXml(urls));
 }

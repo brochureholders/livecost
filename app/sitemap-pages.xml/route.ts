@@ -1,4 +1,6 @@
 import { articlesByDate } from "@/content/blog";
+import { DEMOGRAPHICS } from "@/lib/demographics";
+import { STATES } from "@/lib/states";
 import { xmlResponse, urlsetXml, type SitemapUrl } from "@/lib/sitemap-utils";
 
 export const revalidate = 86400;
@@ -14,6 +16,23 @@ export async function GET() {
     { path: "/rankings/highest-income-cities", lastmod: today, changefreq: "monthly", priority: 0.8 },
     { path: "/rankings/cheapest-rent-cities", lastmod: today, changefreq: "monthly", priority: 0.8 },
     { path: "/calculator", lastmod: today, changefreq: "monthly", priority: 0.5 },
+    { path: "/should-i-move-to", lastmod: today, changefreq: "weekly", priority: 0.9 },
+    { path: "/best-cities", lastmod: today, changefreq: "weekly", priority: 0.9 },
+    { path: "/quiz", lastmod: today, changefreq: "monthly", priority: 0.9 },
+    ...DEMOGRAPHICS.map((d) => ({
+      path: `/best-cities/${d.slug}`,
+      lastmod: today,
+      changefreq: "weekly" as const,
+      priority: 0.8,
+    })),
+    ...DEMOGRAPHICS.flatMap((d) =>
+      STATES.map((s) => ({
+        path: `/best-cities/${d.slug}/${s.slug}`,
+        lastmod: today,
+        changefreq: "monthly" as const,
+        priority: 0.6,
+      })),
+    ),
     { path: "/blog", lastmod: today, changefreq: "weekly", priority: 0.6 },
     ...articlesByDate.map(({ meta }) => ({
       path: `/blog/${meta.slug}`,
