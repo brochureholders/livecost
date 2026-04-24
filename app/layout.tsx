@@ -38,6 +38,15 @@ export const metadata: Metadata = {
     follow: true,
     googleBot: { index: true, follow: true },
   },
+  // Search-engine ownership verification. Paste the code Google Search
+  // Console / Bing Webmaster gives you into the corresponding env var in
+  // Vercel → Settings → Environment Variables. Redeploy to apply.
+  verification: {
+    google: process.env.GOOGLE_VERIFICATION,
+    other: process.env.BING_VERIFICATION
+      ? { "msvalidate.01": process.env.BING_VERIFICATION }
+      : undefined,
+  },
 };
 
 const organizationJsonLd = {
