@@ -5,10 +5,10 @@ export const meta: ArticleMeta = {
   slug: "salary-needed-major-us-cities",
   title: "How Much Salary Do You Need to Live Comfortably in Major US Cities?",
   seoTitle:
-    "How Much Salary Do You Need to Live in Major US Cities (2026) | LiveCost",
+    "How Much Salary Do You Need to Live in Major US Cities (2026) | UrbRank",
   description:
     "Target income to live comfortably in NYC, LA, SF, Chicago, Austin, Denver, and more. Based on 30% housing rule and local median rent.",
-  author: "LiveCost Team",
+  author: "UrbRank Team",
   published: "2026-04-20",
   tags: ["salary", "budgeting", "major-cities"],
   readingMinutes: 5,

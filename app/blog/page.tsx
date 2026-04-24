@@ -6,12 +6,12 @@ export const revalidate = 86400;
 
 export const metadata: Metadata = {
   title:
-    "LiveCost Blog — Cost of Living Guides, City Comparisons, Salary Advice",
+    "UrbRank Blog — Cost of Living Guides, City Comparisons, Salary Advice",
   description:
     "Practical guides on cost of living, salary equivalence, moving between cities, and using our calculator effectively. Updated with Census and BLS data for 2026.",
   alternates: { canonical: "/blog" },
   openGraph: {
-    title: "LiveCost Blog",
+    title: "UrbRank Blog",
     description:
       "Practical guides on cost of living, salary equivalence, and moving between US cities.",
     type: "website",
@@ -43,7 +43,7 @@ export default function BlogListingPage() {
 
       <section className="mt-8 md:mt-12">
         <p className="text-sm font-medium uppercase tracking-widest text-[var(--accent)]">
-          LiveCost Blog
+          UrbRank Blog
         </p>
         <h1 className="mt-3 text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05]">
           Guides, comparisons, and data notes

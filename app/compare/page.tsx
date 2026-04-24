@@ -11,7 +11,7 @@ export const revalidate = 86400;
 
 export const metadata: Metadata = {
   title:
-    "Compare Cost of Living Between US Cities (2026) — Side-by-side Tool | LiveCost",
+    "Compare Cost of Living Between US Cities (2026) — Side-by-side Tool | UrbRank",
   description:
     "Pick two US cities and instantly see how they compare on housing, salary, groceries, crime, climate, and more. Free side-by-side comparison tool.",
   alternates: { canonical: "/compare" },
@@ -91,7 +91,7 @@ export default async function ComparePage({
           Popular comparisons
         </h2>
         <p className="mt-2 text-[var(--muted)]">
-          The most-searched pairs on LiveCost.
+          The most-searched pairs on UrbRank.
         </p>
         <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {POPULAR_PAIRS.map(({ label, a, b }) => {

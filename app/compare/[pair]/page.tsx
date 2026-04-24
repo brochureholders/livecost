@@ -51,7 +51,7 @@ export async function generateMetadata({
   const parsed = parsePair(pair);
   if (!parsed) {
     return {
-      title: "Comparison not found — LiveCost",
+      title: "Comparison not found — UrbRank",
       robots: { index: false, follow: false },
     };
   }
@@ -60,7 +60,7 @@ export async function generateMetadata({
   const [a, b] = await Promise.all([getCityBySlug(slugA), getCityBySlug(slugB)]);
   if (!a || !b) {
     return {
-      title: "Comparison not found — LiveCost",
+      title: "Comparison not found — UrbRank",
       robots: { index: false, follow: false },
     };
   }
@@ -78,7 +78,7 @@ export async function generateMetadata({
           : `${a.name} and ${b.name} compared`;
 
   return {
-    title: `${a.name}, ${a.state_code} vs ${b.name}, ${b.state_code}: Cost of Living Comparison (${year}) | LiveCost`,
+    title: `${a.name}, ${a.state_code} vs ${b.name}, ${b.state_code}: Cost of Living Comparison (${year}) | UrbRank`,
     description: `${headline}. Compare housing, salaries, groceries, and more side by side.`,
     alternates: { canonical: `/compare/${formatPair(a.slug, b.slug)}` },
     openGraph: {

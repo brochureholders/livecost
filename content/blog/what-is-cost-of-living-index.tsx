@@ -5,10 +5,10 @@ export const meta: ArticleMeta = {
   slug: "what-is-cost-of-living-index",
   title: "What Is a Cost of Living Index? A Complete Explanation",
   seoTitle:
-    "What Is a Cost of Living Index? How It's Calculated (2026) | LiveCost",
+    "What Is a Cost of Living Index? How It's Calculated (2026) | UrbRank",
   description:
     "A cost of living index measures how expensive a city is relative to a baseline. Here's how it's built, what 100 means, and where CPI and RPP fit in.",
-  author: "LiveCost Team",
+  author: "UrbRank Team",
   published: "2026-04-20",
   tags: ["index", "methodology", "explainer"],
   readingMinutes: 5,
@@ -113,7 +113,7 @@ export function Body() {
         with a lag.
       </p>
 
-      <h2>How LiveCost builds its index</h2>
+      <h2>How UrbRank builds its index</h2>
       <p>
         Our overall cost-of-living index blends two inputs:
       </p>

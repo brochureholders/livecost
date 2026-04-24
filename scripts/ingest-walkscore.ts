@@ -186,7 +186,7 @@ async function upsertBatch(rows: QualityUpdate[]) {
 
 // ---------------------------------------------------------------------------
 async function main() {
-  console.log("LiveCost Walk/Transit/Bike score ingest\n");
+  console.log("UrbRank Walk/Transit/Bike score ingest\n");
 
   const { data, error } = await supabase
     .from("cities")

@@ -202,7 +202,7 @@ async function upsertBatch(
 
 // ---------------------------------------------------------------------------
 async function main() {
-  console.log(`LiveCost AQI ingest — EPA AQS annual PM2.5 ${YEAR}\n`);
+  console.log(`UrbRank AQI ingest — EPA AQS annual PM2.5 ${YEAR}\n`);
   const cities = await loadCities();
   const withCoords = cities.filter(
     (c) => c.latitude != null && c.longitude != null,

@@ -5,7 +5,7 @@ import CalculatorClient from "@/components/calculator/CalculatorClient";
 export const revalidate = 86400;
 
 export const metadata: Metadata = {
-  title: "Cost of Living Calculator — Compare Salaries Across Cities | LiveCost",
+  title: "Cost of Living Calculator — Compare Salaries Across Cities | UrbRank",
   description:
     "Free cost of living calculator. Enter your salary and see the equivalent income needed to maintain your standard of living in any US city. Category-by-category breakdown included.",
   alternates: { canonical: "/calculator" },

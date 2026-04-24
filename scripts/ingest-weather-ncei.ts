@@ -279,7 +279,7 @@ function deriveNormals(rows: NceiRow[]) {
 
 // ---------------------------------------------------------------------------
 async function main() {
-  console.log("LiveCost weather ingest — NCEI 1991-2020 normals\n");
+  console.log("UrbRank weather ingest — NCEI 1991-2020 normals\n");
 
   const { data: cities, error } = await supabase
     .from("cities")

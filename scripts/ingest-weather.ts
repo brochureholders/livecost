@@ -289,7 +289,7 @@ async function upsertQualityBatch(rows: QualityRow[]) {
 // ---------------------------------------------------------------------------
 async function main() {
   console.log(
-    `LiveCost weather ingest — Open-Meteo archive ${NORMAL_START.slice(0, 4)}–${NORMAL_END.slice(0, 4)}\n`,
+    `UrbRank weather ingest — Open-Meteo archive ${NORMAL_START.slice(0, 4)}–${NORMAL_END.slice(0, 4)}\n`,
   );
 
   const cities = await loadCities();

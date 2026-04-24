@@ -22,7 +22,7 @@ type VariantConfig = {
   hint: string;
   /** <h1> copy — keyword-rich. */
   h1: string;
-  /** <title> copy — keyword-rich, suffixed with "| LiveCost". */
+  /** <title> copy — keyword-rich, suffixed with "| UrbRank". */
   title: string;
 };
 
@@ -34,7 +34,7 @@ const VARIANTS: VariantConfig[] = [
     hint: "Lowest cost-of-living index",
     h1: "Cheapest cities to live in the US",
     title:
-      "Cheapest Cities to Live in the US (2026) — Ranked by Cost of Living | LiveCost",
+      "Cheapest Cities to Live in the US (2026) — Ranked by Cost of Living | UrbRank",
   },
   {
     slug: "most-expensive-cities",
@@ -43,7 +43,7 @@ const VARIANTS: VariantConfig[] = [
     hint: "Highest cost-of-living index",
     h1: "Most expensive cities in the US",
     title:
-      "Most Expensive US Cities (2026) — Ranked by Cost of Living | LiveCost",
+      "Most Expensive US Cities (2026) — Ranked by Cost of Living | UrbRank",
   },
   {
     slug: "highest-income-cities",
@@ -52,7 +52,7 @@ const VARIANTS: VariantConfig[] = [
     hint: "Highest median household income",
     h1: "Highest-income cities in the US",
     title:
-      "Highest-Income US Cities (2026) — Ranked by Median Household Income | LiveCost",
+      "Highest-Income US Cities (2026) — Ranked by Median Household Income | UrbRank",
   },
   {
     slug: "cheapest-rent-cities",
@@ -61,7 +61,7 @@ const VARIANTS: VariantConfig[] = [
     hint: "Lowest median rent",
     h1: "Cities with the cheapest rent in the US",
     title:
-      "Cheapest Rent in the US (2026) — Cities Ranked by Median Rent | LiveCost",
+      "Cheapest Rent in the US (2026) — Cities Ranked by Median Rent | UrbRank",
   },
 ];
 
@@ -84,7 +84,7 @@ export async function generateMetadata({
   const cfg = resolve(variant);
   if (!cfg) {
     return {
-      title: "Ranking not found — LiveCost",
+      title: "Ranking not found — UrbRank",
       robots: { index: false, follow: false },
     };
   }

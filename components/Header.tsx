@@ -12,7 +12,7 @@ export default function Header() {
     <header className="border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur sticky top-0 z-40">
       <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
         <Link href="/" className="text-xl font-semibold tracking-tight">
-          Live<span className="text-[var(--accent)]">Cost</span>
+          Urb<span className="text-[var(--accent)]">Rank</span>
         </Link>
         <nav className="hidden md:flex items-center gap-8 text-sm">
           {navLinks.map((link) => (

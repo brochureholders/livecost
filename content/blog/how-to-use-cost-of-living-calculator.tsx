@@ -5,10 +5,10 @@ export const meta: ArticleMeta = {
   slug: "how-to-use-cost-of-living-calculator",
   title: "How to Use a Cost of Living Calculator: A 2026 Guide",
   seoTitle:
-    "How to Use a Cost of Living Calculator (2026 Guide) | LiveCost",
+    "How to Use a Cost of Living Calculator (2026 Guide) | UrbRank",
   description:
     "A cost of living calculator compares what your salary is worth between two cities. Here's how it works, what to watch out for, and how to read the result.",
-  author: "LiveCost Team",
+  author: "UrbRank Team",
   published: "2026-04-20",
   tags: ["calculator", "guide", "moving"],
   readingMinutes: 4,
@@ -42,7 +42,7 @@ export function Body() {
         The indices themselves combine housing, groceries, utilities,
         transportation, and healthcare, with housing usually weighted the
         heaviest because it&apos;s the biggest line item in most household
-        budgets. LiveCost derives its index from US{" "}
+        budgets. UrbRank derives its index from US{" "}
         <a href="https://www.census.gov/programs-surveys/acs" target="_blank" rel="noopener">
           Census ACS
         </a>{" "}
@@ -64,7 +64,7 @@ export function Body() {
       </p>
       <p>
         The{" "}
-        <Link href="/calculator">LiveCost calculator</Link> takes this one step
+        <Link href="/calculator">UrbRank calculator</Link> takes this one step
         further by showing the category-level difference. Instead of just
         saying &quot;you need $108,000 in San Francisco,&quot; it shows that
         housing accounts for most of the gap and transportation is roughly the
@@ -148,7 +148,7 @@ export function Body() {
         lowest-cost US metros.
       </p>
 
-      <h2>Related tools on LiveCost</h2>
+      <h2>Related tools on UrbRank</h2>
       <ul>
         <li>
           <Link href="/calculator">Cost of Living Calculator</Link> — the

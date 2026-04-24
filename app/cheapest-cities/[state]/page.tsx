@@ -35,7 +35,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { state: slug } = await params;
   const state = getStateBySlug(slug);
-  if (!state) return { title: "State not found — LiveCost" };
+  if (!state) return { title: "State not found — UrbRank" };
 
   const cities = await getCitiesByState(state.code);
   const ranked = sortByIndex(cities).filter((c) => c.cost_index != null);
@@ -47,7 +47,7 @@ export async function generateMetadata({
     : `Ranked cost of living for every city in ${state.name}. Compare housing, salaries, and affordability.`;
 
   return {
-    title: `Cheapest Cities to Live in ${state.name} (${year}) — Ranked by Cost | LiveCost`,
+    title: `Cheapest Cities to Live in ${state.name} (${year}) — Ranked by Cost | UrbRank`,
     description,
     alternates: { canonical: `/cheapest-cities/${slug}` },
     openGraph: {

@@ -6,7 +6,7 @@ export default function Footer() {
       <div className="mx-auto max-w-6xl px-6 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-sm text-[var(--muted)]">
         <div>
           <span className="font-semibold text-[var(--foreground)]">
-            Live<span className="text-[var(--accent)]">Cost</span>
+            Urb<span className="text-[var(--accent)]">Rank</span>
           </span>
           <span className="ml-2">© {new Date().getFullYear()}</span>
         </div>

@@ -183,7 +183,7 @@ function annualValue(series: BlsSeries, year: number): number | null {
 // Main
 // ---------------------------------------------------------------------------
 async function main() {
-  console.log(`LiveCost BLS CPI ingest — year ${TARGET_YEAR}\n`);
+  console.log(`UrbRank BLS CPI ingest — year ${TARGET_YEAR}\n`);
 
   const items = Object.values(ITEM);
   const areas = [NATIONAL_AREA, ...Object.keys(METROS)];

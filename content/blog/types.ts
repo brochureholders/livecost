@@ -3,7 +3,7 @@ import type { ComponentType } from "react";
 export type ArticleMeta = {
   slug: string;
   title: string;
-  /** Used for the <title>. Typically "<title copy> | LiveCost". */
+  /** Used for the <title>. Typically "<title copy> | UrbRank". */
   seoTitle: string;
   description: string;
   author: string;

@@ -1,4 +1,4 @@
-# LiveCost
+# UrbRank
 
 Compare cost of living across US cities. Per-city profiles, side-by-side
 comparisons, state rankings, and an interactive salary calculator, built on
@@ -37,7 +37,7 @@ Statistics (CPI-U).
 
 ```bash
 git clone <your-fork>
-cd livecost
+cd urbrank
 npm install
 cp .env.example .env.local
 # fill .env.local with real values

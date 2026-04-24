@@ -39,7 +39,7 @@ export default async function Home() {
               Featured cities
             </h2>
             <p className="mt-2 text-[var(--muted)]">
-              The most-searched metros on LiveCost this month.
+              The most-searched metros on UrbRank this month.
             </p>
           </div>
           <Link

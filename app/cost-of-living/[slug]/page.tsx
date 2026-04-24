@@ -40,7 +40,7 @@ export async function generateMetadata({
   const city = await getCityBySlug(slug);
   if (!city) {
     return {
-      title: "City not found — LiveCost",
+      title: "City not found — UrbRank",
       robots: { index: false, follow: false },
     };
   }
@@ -65,7 +65,7 @@ export async function generateMetadata({
       : "calculated from Census and BLS data.";
 
   return {
-    title: `Cost of Living in ${city.name}, ${city.state} (${year}) — Housing, Salary & More | LiveCost`,
+    title: `Cost of Living in ${city.name}, ${city.state} (${year}) — Housing, Salary & More | UrbRank`,
     description: `The cost of living in ${city.name}, ${city.state} is ${vsNational} Median rent: ${rent}/mo. Median income: ${income}. Compare with other cities.`,
     alternates: { canonical: `/cost-of-living/${slug}` },
     openGraph: {

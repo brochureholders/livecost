@@ -5,10 +5,10 @@ export const meta: ArticleMeta = {
   slug: "cheapest-states-to-live-in-2026",
   title: "Cheapest States to Live in 2026 (Ranked)",
   seoTitle:
-    "Cheapest States to Live in 2026 — Ranked by Cost of Living | LiveCost",
+    "Cheapest States to Live in 2026 — Ranked by Cost of Living | UrbRank",
   description:
     "The ten cheapest US states to live in, ranked by median rent and overall cost of living. Includes no-income-tax states and the cities driving each state's average.",
-  author: "LiveCost Team",
+  author: "UrbRank Team",
   published: "2026-04-20",
   tags: ["rankings", "states", "affordability"],
   readingMinutes: 6,

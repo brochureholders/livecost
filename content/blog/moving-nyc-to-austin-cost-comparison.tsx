@@ -5,10 +5,10 @@ export const meta: ArticleMeta = {
   slug: "moving-nyc-to-austin-cost-comparison",
   title: "Moving From NYC to Austin: A Complete Cost Comparison",
   seoTitle:
-    "Moving From NYC to Austin: Complete Cost Comparison (2026) | LiveCost",
+    "Moving From NYC to Austin: Complete Cost Comparison (2026) | UrbRank",
   description:
     "How much cheaper is Austin than New York in 2026? Rent, taxes, transportation, and salary equivalents — with real numbers from Census and BLS data.",
-  author: "LiveCost Team",
+  author: "UrbRank Team",
   published: "2026-04-20",
   tags: ["moving", "nyc", "austin", "comparison"],
   readingMinutes: 6,

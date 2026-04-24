@@ -1,7 +1,7 @@
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-export const SITE_NAME = "LiveCost";
+export const SITE_NAME = "UrbRank";
 
 export const SITE_DESCRIPTION =
   "Compare cost of living across every major US city. Housing, salaries, groceries, and more — from Census and BLS data.";

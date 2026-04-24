@@ -5,10 +5,10 @@ export const meta: ArticleMeta = {
   slug: "remote-work-cost-of-living-arbitrage",
   title: "Remote Work Cost of Living Arbitrage: A Practical Guide",
   seoTitle:
-    "Remote Work Cost of Living Arbitrage Guide (2026) | LiveCost",
+    "Remote Work Cost of Living Arbitrage Guide (2026) | UrbRank",
   description:
     "How to keep a high-cost-city salary while living somewhere cheap. Legal considerations, tax gotchas, and the five best destinations for remote workers.",
-  author: "LiveCost Team",
+  author: "UrbRank Team",
   published: "2026-04-20",
   tags: ["remote-work", "arbitrage", "guide"],
   readingMinutes: 6,

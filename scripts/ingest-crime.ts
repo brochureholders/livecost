@@ -266,7 +266,7 @@ async function upsertQualityMerge(rows: QualityPartial[]) {
 // Main
 // ---------------------------------------------------------------------------
 async function main() {
-  console.log(`LiveCost crime ingest — FBI CDE ${YEAR}\n`);
+  console.log(`UrbRank crime ingest — FBI CDE ${YEAR}\n`);
 
   const citiesByState = await loadCitiesByState();
   const states = [...citiesByState.keys()].sort();

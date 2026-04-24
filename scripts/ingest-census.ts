@@ -384,7 +384,7 @@ async function upsertBatch<T extends Record<string, unknown>>(
 // Main
 // ---------------------------------------------------------------------------
 async function main() {
-  console.log(`LiveCost Census ingest — ACS ${YEAR}, top ${TOP_N} cities\n`);
+  console.log(`UrbRank Census ingest — ACS ${YEAR}, top ${TOP_N} cities\n`);
 
   console.log("Fetching national median rent…");
   const nationalMedianRent = await fetchNationalMedianRent();

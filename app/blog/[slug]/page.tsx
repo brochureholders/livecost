@@ -25,7 +25,7 @@ export async function generateMetadata({
   const article = getArticle(slug);
   if (!article) {
     return {
-      title: "Article not found — LiveCost",
+      title: "Article not found — UrbRank",
       robots: { index: false, follow: false },
     };
   }
