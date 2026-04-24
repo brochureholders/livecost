@@ -22,9 +22,9 @@ export default async function Home() {
             Compare Cost of Living Across US Cities
           </h1>
           <p className="mt-6 text-lg text-[var(--muted)] max-w-2xl">
-            Housing, groceries, transportation, taxes, and more — side by side
-            for every major metro. Real numbers, updated monthly from Census
-            and BLS data.
+            Housing, salaries, groceries, utilities, transportation, healthcare,
+            crime, climate, and walkability — side by side for every major
+            metro. Real numbers from US Census, BLS, FBI, EPA, and NCEI data.
           </p>
           <div className="mt-10 max-w-2xl">
             <CompareForm cities={cities} />

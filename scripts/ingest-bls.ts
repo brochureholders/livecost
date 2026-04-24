@@ -14,8 +14,11 @@
  */
 import { config as loadEnv } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
+import { STATES } from "../lib/states";
 
 loadEnv({ path: ".env.local" });
+
+const STATE_TO_REGION = new Map(STATES.map((s) => [s.code, s.region]));
 
 // ---------------------------------------------------------------------------
 // Config
@@ -50,11 +53,25 @@ const ITEM = {
   allItems: "SA0",
   food: "SAF1", // Food
   housing: "SAH", // Housing
+  utilities: "SAH2", // Housing: Fuels and utilities (electricity, gas, water)
   transport: "SAT", // Transportation
   medical: "SAM", // Medical care
 } as const;
 
 const NATIONAL_AREA = "0000"; // CUUR0000... = US city average
+
+// ---------------------------------------------------------------------------
+// Census regions — BLS publishes CPI for each of the four, which we use as
+// a fallback for cities outside the ~20 metro-level CPI series. Coarser
+// than metro data but still a real signal rooted in published CPI, not a
+// guess. Cities get their region from lib/states.ts.
+// ---------------------------------------------------------------------------
+const REGION_CODES: Record<string, string> = {
+  Northeast: "0100",
+  Midwest: "0200",
+  South: "0300",
+  West: "0400",
+};
 
 // ---------------------------------------------------------------------------
 // BLS local area codes for major metros → slugs of cities in our DB that
@@ -186,7 +203,14 @@ async function main() {
   console.log(`UrbRank BLS CPI ingest — year ${TARGET_YEAR}\n`);
 
   const items = Object.values(ITEM);
-  const areas = [NATIONAL_AREA, ...Object.keys(METROS)];
+  // Fetch national + 4 Census regions + every metro area. Regions give us a
+  // coarse but published fallback for cities outside metro coverage so every
+  // city gets every sub-index populated.
+  const areas = [
+    NATIONAL_AREA,
+    ...Object.values(REGION_CODES),
+    ...Object.keys(METROS),
+  ];
   const allSeries = areas.flatMap((a) => items.map((i) => seriesId(a, i)));
 
   console.log(
@@ -208,11 +232,11 @@ async function main() {
     await sleep(REQUEST_DELAY_MS);
   }
 
-  // National baseline
+  // National baseline values for each sub-index
   const nat = {
     all: valueByseries.get(seriesId(NATIONAL_AREA, ITEM.allItems)),
     food: valueByseries.get(seriesId(NATIONAL_AREA, ITEM.food)),
-    housing: valueByseries.get(seriesId(NATIONAL_AREA, ITEM.housing)),
+    utilities: valueByseries.get(seriesId(NATIONAL_AREA, ITEM.utilities)),
     transport: valueByseries.get(seriesId(NATIONAL_AREA, ITEM.transport)),
     medical: valueByseries.get(seriesId(NATIONAL_AREA, ITEM.medical)),
   };
@@ -221,81 +245,137 @@ async function main() {
   }
   console.log(`\nNational CPI all-items ${TARGET_YEAR}: ${nat.all}\n`);
 
-  // Load existing cities so we can map slugs → city_id
+  // Regional indices keyed by region name
+  const regionalIndices: Record<
+    string,
+    {
+      grocery_index: number | null;
+      utilities_index: number | null;
+      transportation_index: number | null;
+      healthcare_index: number | null;
+    }
+  > = {};
+  for (const [region, areaCode] of Object.entries(REGION_CODES)) {
+    regionalIndices[region] = {
+      grocery_index: ratio(
+        valueByseries.get(seriesId(areaCode, ITEM.food)) ?? null,
+        nat.food ?? null,
+      ),
+      utilities_index: ratio(
+        valueByseries.get(seriesId(areaCode, ITEM.utilities)) ?? null,
+        nat.utilities ?? null,
+      ),
+      transportation_index: ratio(
+        valueByseries.get(seriesId(areaCode, ITEM.transport)) ?? null,
+        nat.transport ?? null,
+      ),
+      healthcare_index: ratio(
+        valueByseries.get(seriesId(areaCode, ITEM.medical)) ?? null,
+        nat.medical ?? null,
+      ),
+    };
+    console.log(
+      `  region ${region}: grocery=${regionalIndices[region].grocery_index}, utilities=${regionalIndices[region].utilities_index}, transport=${regionalIndices[region].transportation_index}, healthcare=${regionalIndices[region].healthcare_index}`,
+    );
+  }
+
+  // Build a slug → metro code reverse lookup
+  const slugToMetro = new Map<string, string>();
+  for (const [code, meta] of Object.entries(METROS)) {
+    for (const slug of meta.slugs) slugToMetro.set(slug, code);
+  }
+
+  // Load every city so we can apply regional fallback to non-metro cities too
   const { data: cities, error: citiesErr } = await supabase
     .from("cities")
-    .select("id, slug");
+    .select("id, slug, state_code");
   if (citiesErr) throw new Error(`Failed to load cities: ${citiesErr.message}`);
-  const slugToId = new Map<string, string>(
-    (cities ?? []).map((c) => [c.slug as string, c.id as string]),
-  );
-  console.log(`Loaded ${slugToId.size} cities from DB\n`);
+  console.log(`\nLoaded ${cities?.length ?? 0} cities from DB\n`);
 
-  // Build per-metro indices and stage city_costs updates
   type CostUpdate = {
     city_id: string;
     year: number;
     grocery_index: number | null;
+    utilities_index: number | null;
     transportation_index: number | null;
     healthcare_index: number | null;
     data_source: string;
   };
 
   const updates: CostUpdate[] = [];
-  let metrosWithData = 0;
+  let metroCount = 0;
+  let regionalCount = 0;
+  let skippedCount = 0;
 
   // NOTE: we deliberately do NOT write cost_index or housing_index here.
   // Those fields are owned by the Census ingest (rent-based ratio), which
-  // is internally consistent across all 500 cities. BLS CPI-U levels are
-  // published with per-metro base periods, so ratio-ing them against the
-  // national CPI gives misleading relative values. Sub-indices are still
-  // useful as directional signals within the same category.
-  for (const [code, meta] of Object.entries(METROS)) {
-    const metroAll = valueByseries.get(seriesId(code, ITEM.allItems));
-    if (metroAll == null) {
-      console.warn(`  skipping ${code} ${meta.name}: no all-items CPI`);
+  // is internally consistent across all 500 cities. BLS CPI-U levels have
+  // base-period quirks that make cross-metro ratios unreliable at the
+  // overall level, but sub-category directional comparisons are still useful.
+  for (const city of cities ?? []) {
+    const id = city.id as string;
+    const slug = city.slug as string;
+    const stateCode = city.state_code as string;
+    const region = STATE_TO_REGION.get(stateCode);
+    if (!region) {
+      skippedCount++;
       continue;
     }
-    metrosWithData++;
 
-    const indices = {
-      grocery_index: ratio(valueByseries.get(seriesId(code, ITEM.food)) ?? null, nat.food ?? null),
-      transportation_index: ratio(
-        valueByseries.get(seriesId(code, ITEM.transport)) ?? null,
-        nat.transport ?? null,
-      ),
-      healthcare_index: ratio(
-        valueByseries.get(seriesId(code, ITEM.medical)) ?? null,
-        nat.medical ?? null,
-      ),
-    };
+    // Start with the regional values.
+    const baseline = regionalIndices[region];
+    const indices = { ...baseline };
+    let source = "BLS CPI-U (regional)";
 
-    console.log(
-      `  ${code} ${meta.name}: grocery=${indices.grocery_index}, transport=${indices.transportation_index}, healthcare=${indices.healthcare_index}`,
-    );
-
-    for (const slug of meta.slugs) {
-      const cityId = slugToId.get(slug);
-      if (!cityId) {
-        console.warn(`    no city record for ${slug} (run ingest-census first?)`);
-        continue;
+    // Override with metro-specific values where we have them.
+    const metroCode = slugToMetro.get(slug);
+    if (metroCode) {
+      const metroAll = valueByseries.get(seriesId(metroCode, ITEM.allItems));
+      if (metroAll != null) {
+        const metroFood = ratio(
+          valueByseries.get(seriesId(metroCode, ITEM.food)) ?? null,
+          nat.food ?? null,
+        );
+        const metroUtil = ratio(
+          valueByseries.get(seriesId(metroCode, ITEM.utilities)) ?? null,
+          nat.utilities ?? null,
+        );
+        const metroTrans = ratio(
+          valueByseries.get(seriesId(metroCode, ITEM.transport)) ?? null,
+          nat.transport ?? null,
+        );
+        const metroMed = ratio(
+          valueByseries.get(seriesId(metroCode, ITEM.medical)) ?? null,
+          nat.medical ?? null,
+        );
+        if (metroFood != null) indices.grocery_index = metroFood;
+        if (metroUtil != null) indices.utilities_index = metroUtil;
+        if (metroTrans != null) indices.transportation_index = metroTrans;
+        if (metroMed != null) indices.healthcare_index = metroMed;
+        source = "BLS CPI-U (metro)";
+        metroCount++;
+      } else {
+        regionalCount++;
       }
-      updates.push({
-        city_id: cityId,
-        year: TARGET_YEAR,
-        ...indices,
-        data_source: "BLS CPI-U",
-      });
+    } else {
+      regionalCount++;
     }
+
+    updates.push({
+      city_id: id,
+      year: TARGET_YEAR,
+      ...indices,
+      data_source: source,
+    });
   }
 
   console.log(
-    `\n${metrosWithData}/${Object.keys(METROS).length} metros had CPI data. Upserting ${updates.length} city_costs rows…`,
+    `\n${metroCount} cities from metro data, ${regionalCount} from regional fallback, ${skippedCount} skipped (unknown region). Upserting ${updates.length} city_costs rows…`,
   );
 
-  // Upsert in chunks. Because city_costs is unique on (city_id, year), this
-  // merges into existing Census rows: fields we don't set (income, rent,
-  // home value) are preserved.
+  // Upsert in chunks. city_costs is unique on (city_id, year), so this
+  // merges into existing Census rows without overwriting income, rent, or
+  // home value.
   const CHUNK = 200;
   for (let i = 0; i < updates.length; i += CHUNK) {
     const chunk = updates.slice(i, i + CHUNK);

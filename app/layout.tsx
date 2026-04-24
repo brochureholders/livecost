@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans } from "next/font/google";
+import Script from "next/script";
 import { Suspense } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -68,6 +69,11 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <PageViewTracker />
         </Suspense>
+        <Script
+          src="https://analytics.ahrefs.com/analytics.js"
+          data-key="qqxmN7GstrR6FaBR1uAqZg"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
