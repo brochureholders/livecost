@@ -3,6 +3,7 @@ import Link from "next/link";
 import CityCard from "@/components/CityCard";
 import CompareForm from "@/components/compare/CompareForm";
 import { getCityOptions } from "@/lib/cities";
+import { canonicalizePair, formatPair } from "@/lib/comparison";
 import { featuredCities, popularComparisons } from "@/data/featured-cities";
 
 export const metadata: Metadata = {
@@ -64,16 +65,19 @@ export default async function Home() {
           See how the country&apos;s most-compared city pairs stack up.
         </p>
         <ul className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {popularComparisons.map((c) => (
-            <li key={c.slug}>
-              <Link
-                href={`/compare/${c.slug}`}
-                className="block rounded-lg border border-[var(--border)] bg-[var(--surface)] px-5 py-4 text-sm hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
-              >
-                {c.label} →
-              </Link>
-            </li>
-          ))}
+          {popularComparisons.map((c) => {
+            const [x, y] = canonicalizePair(c.a, c.b);
+            return (
+              <li key={`${c.a}-${c.b}`}>
+                <Link
+                  href={`/compare/${formatPair(x, y)}`}
+                  className="block rounded-lg border border-[var(--border)] bg-[var(--surface)] px-5 py-4 text-sm hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+                >
+                  {c.label} →
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </section>
     </div>
