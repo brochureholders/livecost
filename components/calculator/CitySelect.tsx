@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CityOption } from "@/lib/cities";
 
 type Props = {
@@ -18,20 +18,30 @@ export default function CitySelect({
   onChange,
   placeholder = "Search for a city",
 }: Props) {
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
-  const [highlight, setHighlight] = useState(0);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-
+  const listboxId = useId();
   const selected = useMemo(
     () => cities.find((c) => c.slug === value) ?? null,
     [cities, value],
   );
+  const displayForValue = selected
+    ? `${selected.name}, ${selected.state_code}`
+    : "";
 
-  // When a new value arrives, reflect it in the input text.
-  useEffect(() => {
-    if (selected) setQuery(`${selected.name}, ${selected.state_code}`);
-  }, [selected]);
+  const [query, setQuery] = useState(displayForValue);
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(0);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // Sync query to value when the `value` prop changes from outside (e.g.
+  // URL param sync or programmatic reset). Comparing prev-value state
+  // during render is the documented React pattern for "adjusting some
+  // state when a prop changes" — no effect, no cascading renders.
+  // See https://react.dev/learn/you-might-not-need-an-effect
+  const [prevValue, setPrevValue] = useState(value);
+  if (prevValue !== value) {
+    setPrevValue(value);
+    setQuery(displayForValue);
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -89,6 +99,7 @@ export default function CitySelect({
         type="text"
         role="combobox"
         aria-expanded={open}
+        aria-controls={listboxId}
         aria-autocomplete="list"
         value={query}
         placeholder={placeholder}
@@ -104,6 +115,7 @@ export default function CitySelect({
       />
       {open && filtered.length > 0 && (
         <ul
+          id={listboxId}
           role="listbox"
           className="absolute z-20 mt-1 w-full max-h-72 overflow-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-lg"
         >

@@ -8,8 +8,8 @@ export const SITE_DESCRIPTION =
 
 /** Sitemap generation constants */
 export const SITEMAP = {
-  profilesLimit: 500,
-  comparisonsCitiesLimit: 200,
+  profilesLimit: 1000,
+  comparisonsCitiesLimit: 250,
   urlsPerComparisonSitemap: 50_000,
 } as const;
 

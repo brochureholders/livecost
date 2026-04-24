@@ -54,7 +54,7 @@ export default function QualityOfLife({ quality }: Props) {
               <li className="flex justify-between">
                 <span className="text-[var(--muted)]">Annual rainfall</span>
                 <span className="tabular-nums">
-                  {climate.precipitation.toFixed(0)}"
+                  {climate.precipitation.toFixed(0)}&quot;
                 </span>
               </li>
             )}

@@ -23,7 +23,7 @@ export const revalidate = 86400; // ISR: refresh daily
 type Params = { slug: string };
 
 export async function generateStaticParams(): Promise<Params[]> {
-  const slugs = await getTopCitySlugs(500);
+  const slugs = await getTopCitySlugs(1000);
   return slugs.map((slug) => ({ slug }));
 }
 

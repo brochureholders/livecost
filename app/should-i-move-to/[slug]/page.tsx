@@ -30,7 +30,7 @@ const DIMENSION_LABELS: Record<DimensionKey, string> = {
 };
 
 export async function generateStaticParams(): Promise<Params[]> {
-  const slugs = await getTopCitySlugs(300);
+  const slugs = await getTopCitySlugs(600);
   return slugs.map((slug) => ({ slug }));
 }
 

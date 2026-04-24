@@ -1,11 +1,19 @@
 /**
  * Ingest 1991-2020 climate normals into city_quality via NCEI.
  *
- * NCEI's Data Access v1 API publishes pre-computed 30-year normals per
- * station (no auth, no rate limits). We use a curated map of city slugs
- * to major-airport station IDs since each station has a long climate
- * record. Cities outside the map get no weather data — the UI hides the
- * Climate section when values are null.
+ * NCEI Data Access v1 publishes pre-computed 30-year normals per station
+ * (no auth, no rate limits). Strategy:
+ *
+ *   1. A curated STATION_MAP covers the largest metros with their airport
+ *      GHCN station (long continuous records).
+ *   2. For every other city we auto-map to the NEAREST mapped-city's
+ *      station via haversine distance on lat/lon. Climate normals vary
+ *      slowly across space, so sharing the nearest major-metro station's
+ *      normals is a reasonable approximation (the alternative — hitting
+ *      NCEI's station-search API for 500 cities — would be rate-limited
+ *      and far slower).
+ *   3. Each unique station is fetched once; results fan out to every city
+ *      mapped to that station.
  *
  * Run: npx tsx scripts/ingest-weather-ncei.ts
  * Requires: NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in .env.local.
@@ -35,150 +43,119 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 });
 
 // ---------------------------------------------------------------------------
-// Curated city-slug → NCEI GHCN station ID map. Airport stations are preferred
+// Curated city-slug → NCEI GHCN station ID map. Airport stations preferred
 // because they have the longest continuous records. 1991-2020 normals require
 // a station to have ≥80% data coverage in the window.
+//
+// Cities not listed here are auto-mapped to the nearest mapped-city's station
+// via haversine below.
 // ---------------------------------------------------------------------------
 const STATION_MAP: Record<string, string> = {
-  "new-york-ny": "USW00094728", // NYC Central Park
-  "los-angeles-ca": "USW00023174", // LAX
-  "chicago-il": "USW00094846", // Chicago O'Hare
-  "houston-tx": "USW00012960", // Houston Hobby
-  "phoenix-az": "USW00023183", // Phoenix Sky Harbor
-  "philadelphia-pa": "USW00013739", // PHL
-  "san-antonio-tx": "USW00012921", // San Antonio Intl
-  "san-diego-ca": "USW00023188", // San Diego Lindbergh
-  "dallas-tx": "USW00013960", // Dallas-Fort Worth
-  "san-jose-ca": "USW00023293", // San Jose Intl
-  "austin-tx": "USW00013904", // Austin Bergstrom
-  "jacksonville-fl": "USW00013889", // Jacksonville Intl
-  "fort-worth-tx": "USW00013961", // Fort Worth Meacham
-  "columbus-oh": "USW00014821", // Columbus Intl
-  "charlotte-nc": "USW00013881", // Charlotte Douglas
-  "indianapolis-in": "USW00093819", // Indianapolis Intl
-  "san-francisco-ca": "USW00023234", // SFO
-  "seattle-wa": "USW00024233", // Seattle-Tacoma
-  "denver-co": "USW00003017", // Denver Intl
-  "washington-dc": "USW00013743", // Reagan National
-  "boston-ma": "USW00014739", // Boston Logan
-  "el-paso-tx": "USW00023044", // El Paso Intl
-  "nashville-tn": "USW00013897", // Nashville Intl
-  "detroit-mi": "USW00094847", // Detroit Metro
-  "oklahoma-city-ok": "USW00013967", // Will Rogers
-  "portland-or": "USW00024229", // Portland Intl
-  "las-vegas-nv": "USW00023169", // Harry Reid (McCarran)
-  "memphis-tn": "USW00013893", // Memphis Intl
-  "louisville-ky": "USW00093821", // Louisville Intl
-  "baltimore-md": "USW00093721", // BWI
-  "milwaukee-wi": "USW00014839", // Mitchell Intl
-  "albuquerque-nm": "USW00023050", // Albuquerque Intl
-  "tucson-az": "USW00023160", // Tucson Intl
-  "fresno-ca": "USW00093193", // Fresno Yosemite
-  "sacramento-ca": "USW00023232", // Sacramento Exec
-  "mesa-az": "USW00023183", // shares Phoenix Sky Harbor
-  "kansas-city-mo": "USW00003947", // Kansas City Intl
-  "atlanta-ga": "USW00013874", // Hartsfield-Jackson
-  "long-beach-ca": "USW00023129", // Long Beach Daugherty
-  "colorado-springs-co": "USW00093037", // Colorado Springs Muni
-  "raleigh-nc": "USW00013722", // Raleigh-Durham Intl
-  "miami-fl": "USW00012839", // Miami Intl
-  "virginia-beach-va": "USW00013702", // Norfolk Intl (nearest)
-  "omaha-ne": "USW00094918", // Eppley Airfield
-  "oakland-ca": "USW00023230", // Oakland Intl
-  "minneapolis-mn": "USW00014922", // MSP
-  "tulsa-ok": "USW00013968", // Tulsa Intl
-  "arlington-tx": "USW00013960", // shares DFW
-  "new-orleans-la": "USW00012916", // Louis Armstrong
-  "wichita-ks": "USW00003928", // Dwight D Eisenhower
-  "cleveland-oh": "USW00014820", // Cleveland Hopkins
-  "tampa-fl": "USW00012842", // Tampa Intl
-  "bakersfield-ca": "USW00023155", // Meadows Field
-  "aurora-co": "USW00003017", // shares Denver Intl
-  "anaheim-ca": "USW00023174", // close to LAX
-  "honolulu-hi": "USW00022521", // Honolulu Intl
-  "santa-ana-ca": "USW00023129", // shares Long Beach
-  "riverside-ca": "USW00023161", // Riverside Muni
-  "corpus-christi-tx": "USW00012924", // Corpus Christi Intl
-  "lexington-ky": "USW00093820", // Blue Grass Airport
-  "stockton-ca": "USW00023237", // Stockton Metro
-  "henderson-nv": "USW00023169", // shares Las Vegas
-  "saint-paul-mn": "USW00014922", // shares MSP
-  "cincinnati-oh": "USW00093814", // Cincinnati/Northern KY
-  "pittsburgh-pa": "USW00094823", // Pittsburgh Intl
-  "greensboro-nc": "USW00013723", // Piedmont Triad
-  "anchorage-ak": "USW00026451", // Ted Stevens Intl
-  "plano-tx": "USW00013960", // shares DFW
-  "lincoln-ne": "USW00014939", // Lincoln Muni
-  "orlando-fl": "USW00012815", // Orlando Intl
-  "irvine-ca": "USW00023129", // shares Long Beach
-  "newark-nj": "USW00014734", // Newark Liberty
-  "durham-nc": "USW00013722", // shares RDU
-  "chula-vista-ca": "USW00023188", // shares San Diego
-  "toledo-oh": "USW00094830", // Toledo Express
-  "fort-wayne-in": "USW00014827", // Fort Wayne Intl
-  "saint-petersburg-fl": "USW00012842", // shares Tampa
-  "laredo-tx": "USW00012907", // Laredo Intl
-  "jersey-city-nj": "USW00094728", // close to NYC (Central Park)
-  "chandler-az": "USW00023183", // shares Phoenix
-  "madison-wi": "USW00014837", // Dane County Regional
-  "lubbock-tx": "USW00023042", // Lubbock Intl
-  "scottsdale-az": "USW00023183", // shares Phoenix
-  "reno-nv": "USW00023185", // Reno-Tahoe Intl
-  "buffalo-ny": "USW00014733", // Buffalo Niagara
-  "gilbert-az": "USW00023183", // shares Phoenix
-  "glendale-az": "USW00023183", // shares Phoenix
-  "north-las-vegas-nv": "USW00023169", // shares Las Vegas
-  "winston-salem-nc": "USW00013723", // shares Piedmont Triad
-  "chesapeake-va": "USW00013702", // shares Norfolk
-  "norfolk-va": "USW00013702", // Norfolk Intl
-  "fremont-ca": "USW00023230", // shares Oakland
-  "garland-tx": "USW00013960", // shares DFW
-  "irving-tx": "USW00013960", // shares DFW
-  "hialeah-fl": "USW00012839", // shares Miami
-  "richmond-va": "USW00013740", // Richmond Intl
-  "boise-city-id": "USW00024131", // Boise Air Terminal
-  "spokane-wa": "USW00024157", // Spokane Intl
-  "baton-rouge-la": "USW00013970", // Baton Rouge Metro
-  "tacoma-wa": "USW00024233", // shares Seattle
-  "san-bernardino-ca": "USW00023161", // shares Riverside
-  "modesto-ca": "USW00023258", // Modesto City-County
-  "fontana-ca": "USW00023161", // shares Riverside
-  "des-moines-ia": "USW00014933", // Des Moines Intl
-  "moreno-valley-ca": "USW00023161", // shares Riverside
-  "santa-clarita-ca": "USW00023174", // close to LAX
-  "fayetteville-nc": "USW00013714", // Fayetteville Regional
-  "birmingham-al": "USW00013876", // Birmingham Intl
-  "oxnard-ca": "USW00023136", // Oxnard Airport
-  "rochester-ny": "USW00014768", // Greater Rochester Intl
-  "port-saint-lucie-fl": "USW00012815", // shares Orlando
-  "grand-rapids-mi": "USW00094860", // Gerald R Ford
-  "huntsville-al": "USW00003856", // Huntsville Intl
-  "salt-lake-city-ut": "USW00024127", // Salt Lake City Intl
-  "frisco-tx": "USW00013960", // shares DFW
-  "yonkers-ny": "USW00094728", // close to NYC
-  "amarillo-tx": "USW00023047", // Rick Husband
-  "glendale-ca": "USW00023174", // close to LAX
-  "mckinney-tx": "USW00013960", // shares DFW
-  "montgomery-al": "USW00013895", // Montgomery Regional
-  "aurora-il": "USW00094846", // shares Chicago O'Hare
-  "akron-oh": "USW00014895", // Akron-Canton Regional
-  "little-rock-ar": "USW00013963", // Bill and Hillary Clinton
-  "augusta-ga": "USW00003820", // Augusta Regional
-  "columbus-ga": "USW00093842", // Columbus Metropolitan
-  "shreveport-la": "USW00013957", // Shreveport Regional
-  "mobile-al": "USW00013894", // Mobile Regional
-  "overland-park-ks": "USW00003947", // shares Kansas City
-  "knoxville-tn": "USW00013891", // McGhee Tyson
-  "grand-prairie-tx": "USW00013960", // shares DFW
-  "salem-or": "USW00024232", // McNary Field
-  "tallahassee-fl": "USW00093805", // Tallahassee Intl
-  "huntington-beach-ca": "USW00023129", // shares Long Beach
-  "worcester-ma": "USW00094746", // Worcester Regional
-  "knox-city-tn": "USW00013891", // shares Knoxville
+  "new-york-ny": "USW00094728",
+  "los-angeles-ca": "USW00023174",
+  "chicago-il": "USW00094846",
+  "houston-tx": "USW00012960",
+  "phoenix-az": "USW00023183",
+  "philadelphia-pa": "USW00013739",
+  "san-antonio-tx": "USW00012921",
+  "san-diego-ca": "USW00023188",
+  "dallas-tx": "USW00013960",
+  "san-jose-ca": "USW00023293",
+  "austin-tx": "USW00013904",
+  "jacksonville-fl": "USW00013889",
+  "fort-worth-tx": "USW00013961",
+  "columbus-oh": "USW00014821",
+  "charlotte-nc": "USW00013881",
+  "indianapolis-in": "USW00093819",
+  "san-francisco-ca": "USW00023234",
+  "seattle-wa": "USW00024233",
+  "denver-co": "USW00003017",
+  "washington-dc": "USW00013743",
+  "boston-ma": "USW00014739",
+  "el-paso-tx": "USW00023044",
+  "nashville-tn": "USW00013897",
+  "detroit-mi": "USW00094847",
+  "oklahoma-city-ok": "USW00013967",
+  "portland-or": "USW00024229",
+  "las-vegas-nv": "USW00023169",
+  "memphis-tn": "USW00013893",
+  "louisville-ky": "USW00093821",
+  "baltimore-md": "USW00093721",
+  "milwaukee-wi": "USW00014839",
+  "albuquerque-nm": "USW00023050",
+  "tucson-az": "USW00023160",
+  "fresno-ca": "USW00093193",
+  "sacramento-ca": "USW00023232",
+  "kansas-city-mo": "USW00003947",
+  "atlanta-ga": "USW00013874",
+  "colorado-springs-co": "USW00093037",
+  "raleigh-nc": "USW00013722",
+  "miami-fl": "USW00012839",
+  "omaha-ne": "USW00094918",
+  "oakland-ca": "USW00023230",
+  "minneapolis-mn": "USW00014922",
+  "tulsa-ok": "USW00013968",
+  "new-orleans-la": "USW00012916",
+  "wichita-ks": "USW00003928",
+  "cleveland-oh": "USW00014820",
+  "tampa-fl": "USW00012842",
+  "bakersfield-ca": "USW00023155",
+  "honolulu-hi": "USW00022521",
+  "riverside-ca": "USW00023161",
+  "corpus-christi-tx": "USW00012924",
+  "lexington-ky": "USW00093820",
+  "stockton-ca": "USW00023237",
+  "cincinnati-oh": "USW00093814",
+  "pittsburgh-pa": "USW00094823",
+  "greensboro-nc": "USW00013723",
+  "anchorage-ak": "USW00026451",
+  "lincoln-ne": "USW00014939",
+  "orlando-fl": "USW00012815",
+  "newark-nj": "USW00014734",
+  "toledo-oh": "USW00094830",
+  "fort-wayne-in": "USW00014827",
+  "laredo-tx": "USW00012907",
+  "madison-wi": "USW00014837",
+  "lubbock-tx": "USW00023042",
+  "reno-nv": "USW00023185",
+  "buffalo-ny": "USW00014733",
+  "norfolk-va": "USW00013702",
+  "richmond-va": "USW00013740",
+  "boise-city-id": "USW00024131",
+  "spokane-wa": "USW00024157",
+  "baton-rouge-la": "USW00013970",
+  "modesto-ca": "USW00023258",
+  "des-moines-ia": "USW00014933",
+  "fayetteville-nc": "USW00013714",
+  "birmingham-al": "USW00013876",
+  "oxnard-ca": "USW00023136",
+  "rochester-ny": "USW00014768",
+  "grand-rapids-mi": "USW00094860",
+  "huntsville-al": "USW00003856",
+  "salt-lake-city-ut": "USW00024127",
+  "amarillo-tx": "USW00023047",
+  "montgomery-al": "USW00013895",
+  "akron-oh": "USW00014895",
+  "little-rock-ar": "USW00013963",
+  "augusta-ga": "USW00003820",
+  "columbus-ga": "USW00093842",
+  "shreveport-la": "USW00013957",
+  "mobile-al": "USW00013894",
+  "knoxville-tn": "USW00013891",
+  "salem-or": "USW00024232",
+  "tallahassee-fl": "USW00093805",
+  "worcester-ma": "USW00094746",
 };
 
 // ---------------------------------------------------------------------------
-type CityRow = { id: string; slug: string; name: string; state_code: string };
+type CityRow = {
+  id: string;
+  slug: string;
+  name: string;
+  state_code: string;
+  latitude: number | null;
+  longitude: number | null;
+};
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -224,7 +201,10 @@ async function fetchNormals(stationId: string): Promise<NceiRow[] | null> {
     dataTypes: "MLY-TMAX-NORMAL,MLY-TMIN-NORMAL,MLY-PRCP-NORMAL",
     format: "json",
   });
-  const rows = await fetchJson<NceiRow[]>(`${API_BASE}?${qp.toString()}`, `normals ${stationId}`);
+  const rows = await fetchJson<NceiRow[]>(
+    `${API_BASE}?${qp.toString()}`,
+    `normals ${stationId}`,
+  );
   return rows;
 }
 
@@ -235,11 +215,13 @@ function n(s: string | undefined): number | null {
 }
 
 function deriveNormals(rows: NceiRow[]) {
-  // rows are 12 entries, DATE = "01".."12"
   const byMonth = new Map<number, NceiRow>();
   for (const r of rows) byMonth.set(Number(r.DATE), r);
 
-  const tempAvg = (months: number[], key: "MLY-TMAX-NORMAL" | "MLY-TMIN-NORMAL") => {
+  const tempAvg = (
+    months: number[],
+    key: "MLY-TMAX-NORMAL" | "MLY-TMIN-NORMAL",
+  ) => {
     const vals: number[] = [];
     for (const m of months) {
       const v = n(byMonth.get(m)?.[key]);
@@ -260,21 +242,34 @@ function deriveNormals(rows: NceiRow[]) {
       }
     }
     if (count === 0) return null;
-    // If some months missing, scale proportionally.
     return Number(((sum * 12) / count).toFixed(2));
   };
 
   return {
-    // Summer HIGH (avg daily max across Jun-Aug), winter LOW (avg daily min
-    // across Dec-Feb). This matches how weather is typically reported ("avg
-    // high of 84°F in summer") and keeps consistency with existing Open-Meteo
-    // rows on the same table.
     avg_temp_summer: tempAvg([6, 7, 8], "MLY-TMAX-NORMAL"),
     avg_temp_winter: tempAvg([12, 1, 2], "MLY-TMIN-NORMAL"),
     annual_precipitation: precipTotal(),
-    // NCEI's monthly normals don't include sunshine; leave null
     sunshine_days: null as number | null,
   };
+}
+
+/** Haversine distance in miles between two lat/lon points. */
+function haversineMiles(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 3958.8; // Earth radius in miles
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 
 // ---------------------------------------------------------------------------
@@ -283,52 +278,153 @@ async function main() {
 
   const { data: cities, error } = await supabase
     .from("cities")
-    .select("id, slug, name, state_code");
+    .select("id, slug, name, state_code, latitude, longitude")
+    .range(0, 999);
   if (error) throw new Error(`Cities load failed: ${error.message}`);
+  const allCities = (cities ?? []) as CityRow[];
+  console.log(`Loaded ${allCities.length} cities.\n`);
 
-  const mappedCities = (cities ?? []).filter(
-    (c): c is CityRow => (c.slug as string) in STATION_MAP,
-  );
+  // Build a station catalog from the curated map: station_id → list of anchor cities.
+  type StationAnchor = { slug: string; lat: number; lon: number };
+  const stationAnchors = new Map<string, StationAnchor[]>();
+  const curatedSlugs = new Set(Object.keys(STATION_MAP));
+  for (const c of allCities) {
+    if (!curatedSlugs.has(c.slug)) continue;
+    if (c.latitude == null || c.longitude == null) continue;
+    const sid = STATION_MAP[c.slug];
+    if (!stationAnchors.has(sid)) stationAnchors.set(sid, []);
+    stationAnchors.get(sid)!.push({
+      slug: c.slug,
+      lat: c.latitude,
+      lon: c.longitude,
+    });
+  }
   console.log(
-    `${mappedCities.length} / ${cities?.length} cities have station mappings.\n`,
+    `Curated ${curatedSlugs.size} city-slug→station mappings across ${stationAnchors.size} unique stations.`,
   );
 
-  const rows = [];
-  let ok = 0;
-  let fail = 0;
+  // Build final city → station mapping: curated slug gets its station;
+  // every other city gets the station whose nearest anchor city is closest.
+  // Build a state-code index of anchors so we can fall back when lat/lon
+  // is bad (e.g. Parma, OH originally had Parma, Italy coords). For the
+  // state fallback we need an anchor city's state, which we'll derive
+  // from the slug suffix "-xx".
+  function slugStateCode(slug: string): string | null {
+    const m = slug.match(/-([a-z]{2})$/);
+    return m ? m[1].toUpperCase() : null;
+  }
+  const anchorsByState = new Map<string, StationAnchor[]>();
+  for (const [sid, anchors] of stationAnchors) {
+    for (const a of anchors) {
+      const sc = slugStateCode(a.slug);
+      if (!sc) continue;
+      if (!anchorsByState.has(sc)) anchorsByState.set(sc, []);
+      // Tag the station id on the anchor for reverse lookup
+      anchorsByState.get(sc)!.push({ ...a, slug: sid });
+    }
+  }
 
-  for (let i = 0; i < mappedCities.length; i++) {
-    const city = mappedCities[i];
-    const sid = STATION_MAP[city.slug];
+  const cityToStation = new Map<string, string>(); // city_id → station_id
+  let autoMapped = 0;
+  let stateFallback = 0;
+  let skipped = 0;
+  for (const c of allCities) {
+    if (curatedSlugs.has(c.slug)) {
+      cityToStation.set(c.id, STATION_MAP[c.slug]);
+      continue;
+    }
+
+    // First try: haversine to nearest anchor within 400mi (normal path).
+    if (c.latitude != null && c.longitude != null) {
+      let bestStation: string | null = null;
+      let bestDist = Infinity;
+      for (const [sid, anchors] of stationAnchors) {
+        for (const a of anchors) {
+          const d = haversineMiles(c.latitude, c.longitude, a.lat, a.lon);
+          if (d < bestDist) {
+            bestDist = d;
+            bestStation = sid;
+          }
+        }
+      }
+      if (bestStation && bestDist < 400) {
+        cityToStation.set(c.id, bestStation);
+        autoMapped++;
+        continue;
+      }
+    }
+
+    // Fallback: any anchor in the same state. Handles missing / bad lat/lon.
+    const sameState = anchorsByState.get(c.state_code);
+    if (sameState && sameState.length > 0) {
+      // anchor.slug was overridden to be the station_id above
+      cityToStation.set(c.id, sameState[0].slug);
+      stateFallback++;
+      continue;
+    }
+
+    console.warn(`  ${c.name}, ${c.state_code} — no station match; skipping`);
+    skipped++;
+  }
+  console.log(
+    `Auto-mapped ${autoMapped} by proximity, ${stateFallback} by state fallback. Skipped ${skipped}.\n`,
+  );
+
+  // Fetch each unique station once, cache results.
+  const uniqueStations = new Set<string>();
+  for (const sid of cityToStation.values()) uniqueStations.add(sid);
+  console.log(`Fetching ${uniqueStations.size} unique stations from NCEI…\n`);
+
+  const stationData = new Map<string, ReturnType<typeof deriveNormals>>();
+  let fetchOk = 0;
+  let fetchFail = 0;
+  let idx = 0;
+  for (const sid of uniqueStations) {
+    idx++;
     const data = await fetchNormals(sid);
     if (!data || data.length === 0) {
-      fail++;
-      console.warn(
-        `[${i + 1}/${mappedCities.length}] ${city.name}, ${city.state_code}: no data for station ${sid}`,
-      );
+      fetchFail++;
+      console.warn(`  [${idx}/${uniqueStations.size}] station ${sid}: no data`);
       await sleep(REQUEST_DELAY_MS);
       continue;
     }
     const normals = deriveNormals(data);
-    rows.push({ city_id: city.id, year: YEAR, ...normals });
-    ok++;
-    if ((i + 1) % 10 === 0 || i < 3) {
+    stationData.set(sid, normals);
+    fetchOk++;
+    if (idx % 20 === 0 || idx <= 3) {
       console.log(
-        `[${i + 1}/${mappedCities.length}] ${city.name}, ${city.state_code} (${sid}): ` +
-          `summer=${normals.avg_temp_summer}F, winter=${normals.avg_temp_winter}F, precip=${normals.annual_precipitation}in`,
+        `  [${idx}/${uniqueStations.size}] ${sid}: summer=${normals.avg_temp_summer}F, winter=${normals.avg_temp_winter}F, precip=${normals.annual_precipitation}in`,
       );
     }
     await sleep(REQUEST_DELAY_MS);
   }
+  console.log(
+    `\nStations fetched OK: ${fetchOk}, failed: ${fetchFail}.\n`,
+  );
 
-  console.log(`\nOK: ${ok}, failed: ${fail}. Upserting ${rows.length} city_quality rows…`);
+  // Build rows for upsert
+  const rows: Array<{
+    city_id: string;
+    year: number;
+    avg_temp_summer: number | null;
+    avg_temp_winter: number | null;
+    annual_precipitation: number | null;
+    sunshine_days: number | null;
+  }> = [];
+  for (const [cityId, sid] of cityToStation) {
+    const d = stationData.get(sid);
+    if (!d) continue;
+    rows.push({ city_id: cityId, year: YEAR, ...d });
+  }
+  console.log(`Upserting ${rows.length} city_quality rows…`);
+
   const CHUNK = 200;
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
-    const { error } = await supabase
+    const { error: upErr } = await supabase
       .from("city_quality")
       .upsert(chunk, { onConflict: "city_id,year" });
-    if (error) console.error(`  upsert chunk ${i}: ${error.message}`);
+    if (upErr) console.error(`  upsert chunk ${i}: ${upErr.message}`);
   }
   console.log("Done.");
 }

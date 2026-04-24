@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ShouldIMoveIndexPage() {
-  const slugs = await getTopCitySlugs(300);
+  const slugs = await getTopCitySlugs(600);
 
   // Friendly display: group first 60 into a showcase grid, then link "full list"
   const featured = slugs.slice(0, 60);

@@ -15,7 +15,7 @@ loadEnv({ path: ".env.local" });
 // ---------------------------------------------------------------------------
 const YEAR = 2022;
 const API_BASE = `https://api.census.gov/data/${YEAR}/acs/acs5`;
-const TOP_N = 500;
+const TOP_N = 1000;
 const REQUEST_DELAY_MS = 250;
 const MAX_RETRIES = 4;
 
