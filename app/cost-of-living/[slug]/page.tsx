@@ -5,6 +5,7 @@ import {
   getOtherCitiesInState,
   getTopCitySlugs,
 } from "@/lib/cities";
+import { getSimilarCostCities } from "@/lib/internal-links";
 import AffordabilityBadge from "@/components/profile/AffordabilityBadge";
 import Breadcrumbs from "@/components/profile/Breadcrumbs";
 import CompareSection from "@/components/profile/CompareSection";
@@ -15,6 +16,7 @@ import KeyStats from "@/components/profile/KeyStats";
 import OtherCitiesInState from "@/components/profile/OtherCitiesInState";
 import QualityOfLife from "@/components/profile/QualityOfLife";
 import SalaryCalculator from "@/components/profile/SalaryCalculator";
+import SimilarCities from "@/components/profile/SimilarCities";
 
 export const revalidate = 86400; // ISR: refresh daily
 
@@ -85,7 +87,10 @@ export default async function CityProfilePage({
   const city = await getCityBySlug(slug);
   if (!city) notFound();
 
-  const others = await getOtherCitiesInState(city.state_code, city.id, 12);
+  const [others, similarCost] = await Promise.all([
+    getOtherCitiesInState(city.state_code, city.id, 12),
+    getSimilarCostCities(city, 10, 6),
+  ]);
 
   const costs = city.costs;
   const categories = [
@@ -193,6 +198,17 @@ export default async function CityProfilePage({
       <section className="mt-16">
         <OtherCitiesInState stateName={city.state} cities={others} />
       </section>
+
+      {similarCost.length > 0 && (
+        <section className="mt-16">
+          <SimilarCities
+            anchorName={city.name}
+            anchorSlug={city.slug}
+            anchorIndex={costs?.cost_index ?? null}
+            cities={similarCost}
+          />
+        </section>
+      )}
 
       <section className="mt-16">
         <FAQ

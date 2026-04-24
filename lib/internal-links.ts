@@ -60,11 +60,13 @@ export async function getComparisonPartners(
 /** Re-exported for discoverability from the same helper module. */
 export const getCitiesInSameState = getOtherCitiesInState;
 
-/** Cities whose cost_index is within ±`range` of the anchor city's cost_index. */
+/** Cities whose cost_index is within ±`range` of the anchor city's cost_index,
+ *  sorted by proximity (closest first). Fetches all cities (Supabase default
+ *  1000-row cap is fine since our DB has 500) so the filter isn't starved. */
 export async function getSimilarCostCities(
   city: CityProfile,
   range = 10,
-  limit = 10,
+  limit = 5,
 ): Promise<CitySummary[]> {
   if (!isSupabaseConfigured) return [];
   const anchor = city.costs?.cost_index;
@@ -73,8 +75,6 @@ export async function getSimilarCostCities(
   const lower = anchor - range;
   const upper = anchor + range;
 
-  // PostgREST filter over the nested relation: pull cities, filter by cost_index
-  // in the JS layer after the fetch to keep the query straightforward.
   const { data, error } = await supabase
     .from("cities")
     .select(
@@ -84,11 +84,11 @@ export async function getSimilarCostCities(
     `,
     )
     .neq("id", city.id)
-    .limit(limit * 10);
+    .range(0, 999);
 
   if (error || !data) return [];
 
-  const matches = data
+  return data
     .map((row) => toSummary(row as Parameters<typeof toSummary>[0]))
     .filter(
       (c) =>
@@ -100,6 +100,4 @@ export async function getSimilarCostCities(
       return da - db;
     })
     .slice(0, limit);
-
-  return matches;
 }
