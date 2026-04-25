@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
+import { track } from "@/lib/analytics";
 
 type CityEntry = { slug: string; name: string; state_code: string };
 
@@ -67,6 +68,10 @@ export default function HeaderSearch() {
     setOpen(false);
     setQuery("");
     inputRef.current?.blur();
+    track("search_picked", {
+      city_slug: c.slug,
+      query: query.slice(0, 100),
+    });
     router.push(`/should-i-move-to/${c.slug}`);
   }
 

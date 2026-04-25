@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CityOption } from "@/lib/cities";
 import { canonicalizePair, formatPair } from "@/lib/comparison";
+import { track } from "@/lib/analytics";
 import CitySelect from "@/components/calculator/CitySelect";
 
 type Props = {
@@ -44,6 +45,7 @@ export default function CompareForm({
       return;
     }
     const [x, y] = canonicalizePair(from, to);
+    track("compare_submitted", { from, to });
     router.push(`/compare/${formatPair(x, y)}`);
   }
 

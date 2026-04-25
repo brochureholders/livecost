@@ -4,6 +4,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { DIMENSIONS, colorForScore, gradeFor } from "@/lib/urbrank-score";
 import type { DimensionKey } from "@/lib/urbrank-score";
 import { decodeWeights } from "@/lib/quiz";
+import ResultCard from "./ResultCard";
 
 /** Forward the same searchParams the page consumes to the OG image
  *  route handler so it can render a personalized share card. */
@@ -187,53 +188,23 @@ export default async function QuizResultsPage({
             {top10.map((r, i) => {
               const colors = COLORS[colorForScore(r.score)];
               const grade = gradeFor(r.score);
-              // Find top dimension for this city (among user's priorities)
               const topDim = weightEntries
-                .map(([d]) => ({
-                  d,
-                  v: r.dimension_scores[d] ?? 0,
-                }))
+                .map(([d]) => ({ d, v: r.dimension_scores[d] ?? 0 }))
                 .sort((a, b) => b.v - a.v)[0];
               return (
                 <li key={r.city_id}>
-                  <Link
-                    href={`/should-i-move-to/${r.slug}`}
-                    className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4 hover:border-[var(--accent)] transition-colors"
-                  >
-                    <div className="w-10 shrink-0 text-center">
-                      <span className="text-2xl font-semibold tabular-nums text-[var(--muted)]">
-                        {i + 1}
-                      </span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-lg font-semibold truncate">
-                        {r.name}
-                        <span className="ml-2 text-sm text-[var(--muted)] font-normal">
-                          {r.state_code}
-                        </span>
-                      </div>
-                      {topDim && (
-                        <div className="text-xs text-[var(--muted)] mt-0.5">
-                          Especially strong on {DIMENSION_LABELS[topDim.d].toLowerCase()}{" "}
-                          ({topDim.v}/100)
-                        </div>
-                      )}
-                      <div className="mt-2 h-1.5 w-full rounded-full bg-[var(--border)] overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${colors.bar}`}
-                          style={{ width: `${r.score}%` }}
-                        />
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0 w-20">
-                      <div
-                        className={`text-2xl font-semibold tabular-nums ${colors.text}`}
-                      >
-                        {r.score.toFixed(0)}
-                      </div>
-                      <div className="text-xs text-[var(--muted)]">{grade}</div>
-                    </div>
-                  </Link>
+                  <ResultCard
+                    rank={i + 1}
+                    slug={r.slug}
+                    name={r.name}
+                    stateCode={r.state_code}
+                    score={r.score}
+                    grade={grade}
+                    topDimLabel={topDim ? DIMENSION_LABELS[topDim.d] : null}
+                    topDimValue={topDim ? topDim.v : null}
+                    barColorClass={colors.bar}
+                    textColorClass={colors.text}
+                  />
                 </li>
               );
             })}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { CityOption } from "@/lib/cities";
 import { canonicalizePair, formatPair } from "@/lib/comparison";
+import { track } from "@/lib/analytics";
 import CitySelect from "./CitySelect";
 import DifferenceChart, {
   type CategoryDelta,
@@ -116,6 +117,11 @@ export default function CalculatorClient({
     e.preventDefault();
     if (!canCompare || !fromCity || !toCity) return;
     setSubmitted(true);
+    track("calculator_submitted", {
+      from: fromCity.slug,
+      to: toCity.slug,
+      salary,
+    });
     const qp = new URLSearchParams({
       from: fromCity.slug,
       to: toCity.slug,

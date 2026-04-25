@@ -1,18 +1,24 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   QUESTIONS,
   buildWeights,
   encodeWeights,
 } from "@/lib/quiz";
+import { track } from "@/lib/analytics";
 
 export default function QuizClient() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Fire `quiz_started` once per mount.
+  useEffect(() => {
+    track("quiz_started");
+  }, []);
 
   const total = QUESTIONS.length;
   const q = QUESTIONS[step];
@@ -29,6 +35,10 @@ export default function QuizClient() {
     } else {
       setSubmitting(true);
       const weights = buildWeights(next);
+      // Top priority dimension is the most useful single prop.
+      const topDim = (Object.entries(weights) as [string, number][])
+        .sort((a, b) => b[1] - a[1])[0]?.[0];
+      track("quiz_completed", topDim ? { top_priority: topDim } : undefined);
       const qs = encodeWeights(weights);
       router.push(`/quiz/results?${qs}`);
     }
