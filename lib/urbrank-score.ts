@@ -287,26 +287,33 @@ export type LeaderboardRow = UrbRankScore & {
 };
 
 /** Top N cities by UrbRank Score for a given profile.
- *  Optional stateCode filters to cities in that state only. */
+ *  Optional stateCode filters to cities in that state only.
+ *
+ *  Uses `cities!inner(...)` so that `.eq("cities.state_code", X)` actually
+ *  filters the parent rows. Without `!inner`, PostgREST returns all
+ *  urbrank_scores rows but nulls the `cities` join for non-matches —
+ *  silently producing a leaderboard of "matches" with empty city data. */
 export async function getUrbRankLeaderboard(
   profile: Profile,
   limit = 100,
   stateCode?: string,
 ): Promise<LeaderboardRow[]> {
   if (!isSupabaseConfigured) return [];
+  // Use !inner only when state filter is requested; for the unfiltered
+  // path, an inner join is unnecessary and the regular embed performs
+  // identically while preserving the original query plan.
+  const select = stateCode
+    ? `city_id, profile, score, grade, national_rank, dimension_scores,
+       cities!inner ( name, slug, state, state_code, population )`
+    : `city_id, profile, score, grade, national_rank, dimension_scores,
+       cities ( name, slug, state, state_code, population )`;
   let query = supabase
     .from("urbrank_scores")
-    .select(
-      `
-      city_id, profile, score, grade, national_rank, dimension_scores,
-      cities ( name, slug, state, state_code, population )
-    `,
-    )
+    .select(select)
     .eq("profile", profile)
     .order("score", { ascending: false })
     .limit(limit);
   if (stateCode) {
-    // PostgREST nested filter
     query = query.eq("cities.state_code", stateCode);
   }
   const { data, error } = await query;
