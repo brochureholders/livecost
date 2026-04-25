@@ -107,6 +107,31 @@ export async function getTopCitySlugs(limit: number): Promise<string[]> {
   return data.map((r) => r.slug as string);
 }
 
+/** Compact name index of every city — slug + name + state_code only.
+ *  Used by the global header search to autocomplete across all 1000
+ *  cities. Total payload is ~30-50KB which is fine for a one-time
+ *  on-focus fetch from the client. Sorted population-desc so default
+ *  results show major metros first. */
+export type CityIndexEntry = {
+  slug: string;
+  name: string;
+  state_code: string;
+};
+export async function getCityIndex(): Promise<CityIndexEntry[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from("cities")
+    .select("slug, name, state_code, population")
+    .order("population", { ascending: false, nullsFirst: false })
+    .range(0, 1999);
+  if (error || !data) return [];
+  return data.map((r) => ({
+    slug: r.slug as string,
+    name: r.name as string,
+    state_code: r.state_code as string,
+  }));
+}
+
 export async function getCityOptions(limit = 500): Promise<CityOption[]> {
   if (!isSupabaseConfigured) return DEMO_OPTIONS;
   const { data, error } = await supabase
