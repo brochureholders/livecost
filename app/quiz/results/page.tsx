@@ -5,13 +5,38 @@ import { DIMENSIONS, colorForScore, gradeFor } from "@/lib/urbrank-score";
 import type { DimensionKey } from "@/lib/urbrank-score";
 import { decodeWeights } from "@/lib/quiz";
 
-export const metadata: Metadata = {
-  title: "Your UrbRank Results — Best Cities For You",
-  description:
-    "Personalized ranking of US cities based on your quiz answers, powered by the UrbRank Score.",
-  alternates: { canonical: "/quiz/results" },
-  robots: { index: false, follow: true },
-};
+/** Forward the same searchParams the page consumes to the OG image
+ *  route handler so it can render a personalized share card. */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  const sp = await searchParams;
+  const qp = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (typeof v === "string") qp.set(k, v);
+  }
+  const ogUrl = `/quiz/results/og${qp.toString() ? `?${qp.toString()}` : ""}`;
+  return {
+    title: "Your UrbRank Results — Best Cities For You",
+    description:
+      "Personalized ranking of US cities based on your quiz answers, powered by the UrbRank Score.",
+    alternates: { canonical: "/quiz/results" },
+    robots: { index: false, follow: true },
+    openGraph: {
+      title: "Your UrbRank Results — Best Cities For You",
+      description:
+        "Personalized ranking of US cities based on your quiz answers.",
+      images: [{ url: ogUrl, width: 1200, height: 630 }],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      images: [ogUrl],
+    },
+  };
+}
 
 type CityRow = {
   city_id: string;

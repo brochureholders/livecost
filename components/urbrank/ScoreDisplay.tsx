@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { colorForScore, PROFILE_LABELS, PROFILES } from "@/lib/urbrank-score";
 import type {
@@ -7,7 +8,23 @@ import type {
   Profile,
   UrbRankScore,
 } from "@/lib/urbrank-score";
-import DimensionRadar from "./DimensionRadar";
+
+// Lazy-load Recharts. Without this, every /should-i-move-to/[slug] page
+// ships ~280KB of charting JS in the initial bundle even though the radar
+// is often below the fold and most visitors never see it before bouncing.
+// dynamic() with ssr:false also avoids the SSR/CSR mismatch that Recharts
+// is prone to. SkeletonRadar reserves the same height to prevent CLS.
+const DimensionRadar = dynamic(() => import("./DimensionRadar"), {
+  ssr: false,
+  loading: () => (
+    <div
+      style={{ height: 360 }}
+      className="w-full flex items-center justify-center text-sm text-[var(--muted)]"
+    >
+      Loading chart…
+    </div>
+  ),
+});
 
 const DIMENSION_LABELS: Record<DimensionKey, string> = {
   affordability: "Affordability",
