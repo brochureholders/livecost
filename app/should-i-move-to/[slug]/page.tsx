@@ -12,6 +12,7 @@ import {
   getUrbRankScoresForCity,
 } from "@/lib/urbrank-score";
 import type { DimensionKey } from "@/lib/urbrank-score";
+import { generateNarrative } from "@/lib/city-narrative";
 import Breadcrumbs from "@/components/profile/Breadcrumbs";
 import ScoreDisplay from "@/components/urbrank/ScoreDisplay";
 
@@ -81,6 +82,7 @@ export default async function ShouldIMoveToPage({
   ]);
 
   const general = scores.general;
+  const narrative = generateNarrative(city, scores);
 
   // Build pros/cons from top and bottom dimensions on the general profile.
   const dims = general?.dimension_scores ?? {};
@@ -107,11 +109,8 @@ export default async function ShouldIMoveToPage({
         <h1 className="mt-3 text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05]">
           {city.name}, {city.state_code}?
         </h1>
-        <p className="mt-4 max-w-2xl text-[var(--muted)] text-lg">
-          UrbRank Score analyzes {city.name} across 7 dimensions — affordability,
-          safety, climate, walkability, jobs, environment, and education — and
-          weights them by what matters to your lifestyle. Pick a profile below
-          to see how it stacks up.
+        <p className="mt-4 max-w-3xl text-[var(--muted)] text-lg leading-relaxed">
+          {narrative.intro}
         </p>
       </section>
 
@@ -176,6 +175,87 @@ export default async function ShouldIMoveToPage({
                 </li>
               ))}
             </ul>
+          </div>
+        </section>
+      )}
+
+      {/* Narrative sections — give Google ~600 words of unique copy per
+          city. Source: lib/city-narrative.ts (deterministic from data). */}
+      <section className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
+          <h2 className="text-xl md:text-2xl font-semibold tracking-tight">
+            Cost of living in {city.name}
+          </h2>
+          <p className="mt-3 text-[var(--muted)] leading-relaxed">
+            {narrative.costSnapshot}
+          </p>
+          <Link
+            href={`/cost-of-living/${city.slug}`}
+            className="mt-4 inline-block text-sm text-[var(--accent)] hover:underline"
+          >
+            Full cost-of-living breakdown →
+          </Link>
+        </div>
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
+          <h2 className="text-xl md:text-2xl font-semibold tracking-tight">
+            Climate &amp; lifestyle
+          </h2>
+          <p className="mt-3 text-[var(--muted)] leading-relaxed">
+            {narrative.climateAndLifestyle}
+          </p>
+        </div>
+      </section>
+
+      {narrative.verdictByProfile.length > 0 && (
+        <section className="mt-16">
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
+            Is {city.name} right for you?
+          </h2>
+          <p className="mt-2 text-[var(--muted)]">
+            Verdict by lifestyle profile — same data, different priorities.
+          </p>
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {narrative.verdictByProfile.map((v) => (
+              <div
+                key={v.profile}
+                className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <h3 className="font-semibold">
+                    {PROFILE_LABELS[v.profile]}
+                  </h3>
+                  <Link
+                    href={`/best-cities/${v.profile === "family" ? "families" : v.profile === "retiree" ? "retirees" : v.profile === "remote_worker" ? "remote-workers" : "young-professionals"}`}
+                    className="text-xs text-[var(--accent)] hover:underline shrink-0"
+                  >
+                    See ranking →
+                  </Link>
+                </div>
+                <p className="mt-2 text-sm text-[var(--muted)] leading-relaxed">
+                  {v.verdict}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* City-specific FAQ — answers the long-tail questions Google
+          actually surfaces (climate, walkability, expense, schools). */}
+      {narrative.faqs.length > 0 && (
+        <section className="mt-16 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
+            Frequently asked questions about {city.name}
+          </h2>
+          <div className="mt-6 space-y-5">
+            {narrative.faqs.map((f, i) => (
+              <div key={i}>
+                <h3 className="font-medium">{f.q}</h3>
+                <p className="mt-2 text-sm text-[var(--muted)] leading-relaxed">
+                  {f.a}
+                </p>
+              </div>
+            ))}
           </div>
         </section>
       )}
@@ -285,42 +365,20 @@ export default async function ShouldIMoveToPage({
           }}
         />
       )}
-      {hasScore && (
+      {/* FAQPage schema mirrors the visible FAQ section so Google can
+          surface rich-result snippets in SERPs. */}
+      {narrative.faqs.length > 0 && (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "FAQPage",
-              mainEntity: [
-                {
-                  "@type": "Question",
-                  name: `What is ${city.name}'s UrbRank Score?`,
-                  acceptedAnswer: {
-                    "@type": "Answer",
-                    text: `${city.name}, ${city.state} has an overall UrbRank Score of ${general!.score.toFixed(0)}/100 (grade ${general!.grade}), ranked #${general!.national_rank ?? "—"} nationally among all scored US cities.`,
-                  },
-                },
-                {
-                  "@type": "Question",
-                  name: `Is ${city.name} a good place to live?`,
-                  acceptedAnswer: {
-                    "@type": "Answer",
-                    text: `${city.name}'s strongest dimensions are ${pros.map(([k]) => DIMENSION_LABELS[k]).join(", ")}. It scores lowest on ${cons.map(([k]) => DIMENSION_LABELS[k]).join(", ")}. Whether it's right for you depends on which dimensions matter most.`,
-                  },
-                },
-                ...(Object.keys(PROFILE_LABELS) as (keyof typeof PROFILE_LABELS)[])
-                  .filter((p) => p !== "general" && scores[p] != null)
-                  .slice(0, 2)
-                  .map((p) => ({
-                    "@type": "Question",
-                    name: `Is ${city.name} good for ${PROFILE_LABELS[p].toLowerCase()}?`,
-                    acceptedAnswer: {
-                      "@type": "Answer",
-                      text: `For ${PROFILE_LABELS[p].toLowerCase()}, ${city.name} scores ${scores[p]!.score.toFixed(0)}/100 (grade ${scores[p]!.grade}), ranked #${scores[p]!.national_rank ?? "—"} nationally in that category.`,
-                    },
-                  })),
-              ],
+              mainEntity: narrative.faqs.map((f) => ({
+                "@type": "Question",
+                name: f.q,
+                acceptedAnswer: { "@type": "Answer", text: f.a },
+              })),
             }),
           }}
         />

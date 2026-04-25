@@ -42,7 +42,9 @@ export function Body() {
 
       <h2>Top picks</h2>
 
-      <h3>Round Rock, TX</h3>
+      <h3>
+        <Link href="/should-i-move-to/round-rock-tx">Round Rock, TX</Link>
+      </h3>
       <p>
         Austin&apos;s best-rated school-district neighbor. Strong schools, low
         crime by metro-area standards, a mild-ish climate, and cost of living
@@ -52,7 +54,9 @@ export function Body() {
         wide margin.
       </p>
 
-      <h3>Overland Park, KS</h3>
+      <h3>
+        <Link href="/should-i-move-to/overland-park-ks">Overland Park, KS</Link>
+      </h3>
       <p>
         A perennial top pick — and for once, the rankings agree with Kansans.
         Very low crime, some of the best-rated schools in the Midwest, and
@@ -60,7 +64,9 @@ export function Body() {
         seasons but without the extremes.
       </p>
 
-      <h3>Plano, TX</h3>
+      <h3>
+        <Link href="/should-i-move-to/plano-tx">Plano, TX</Link>
+      </h3>
       <p>
         Corporate HQ country, which pulls in a highly-educated workforce and
         funds strong schools. Low crime, walkable master-planned
@@ -68,7 +74,9 @@ export function Body() {
         solid bet for dual-income families.
       </p>
 
-      <h3>Naperville, IL</h3>
+      <h3>
+        <Link href="/should-i-move-to/naperville-il">Naperville, IL</Link>
+      </h3>
       <p>
         Outside Chicago, Naperville offers quiet suburban life with great
         schools and a walkable downtown. Winters are real, but school quality
@@ -76,7 +84,9 @@ export function Body() {
         after year.
       </p>
 
-      <h3>Cary, NC</h3>
+      <h3>
+        <Link href="/should-i-move-to/cary-nc">Cary, NC</Link>
+      </h3>
       <p>
         Research Triangle-adjacent, warm climate, highly educated population,
         and schools that regularly rank among the best in the Southeast. The

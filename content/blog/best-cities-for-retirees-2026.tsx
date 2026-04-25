@@ -40,7 +40,9 @@ export function Body() {
 
       <h2>Top retirement cities</h2>
 
-      <h3>Asheville, NC</h3>
+      <h3>
+        <Link href="/should-i-move-to/asheville-nc">Asheville, NC</Link>
+      </h3>
       <p>
         Mild four-season climate, low summer humidity, a walkable arts-and-
         music downtown, and a growing medical corridor. Cost of living has
@@ -48,7 +50,9 @@ export function Body() {
         Gulf Coast. Consistently near the top of our retiree ranking.
       </p>
 
-      <h3>Venice, FL</h3>
+      <h3>
+        <Link href="/should-i-move-to/venice-fl">Venice, FL</Link>
+      </h3>
       <p>
         Gulf Coast Florida without the Miami prices. Warm year-round,
         walkable historic downtown, and a retiree-heavy population that
@@ -56,15 +60,20 @@ export function Body() {
         Hurricane risk is the only meaningful downside.
       </p>
 
-      <h3>Prescott, AZ</h3>
+      <h3>
+        <Link href="/should-i-move-to/prescott-az">Prescott, AZ</Link>
+      </h3>
       <p>
         A surprise entry for people who think Arizona means blast-furnace
         summers. Prescott sits at 5,400 feet, which puts summers in the 80s
-        instead of Phoenix&apos;s 110s. Low crime, cheap cost of living, and
-        endless outdoor recreation.
+        instead of <Link href="/should-i-move-to/phoenix-az">Phoenix</Link>&apos;s
+        110s. Low crime, cheap cost of living, and endless outdoor
+        recreation.
       </p>
 
-      <h3>Fort Myers, FL</h3>
+      <h3>
+        <Link href="/should-i-move-to/fort-myers-fl">Fort Myers, FL</Link>
+      </h3>
       <p>
         Florida&apos;s Gulf Coast again — warm, walkable, affordable by
         coastal-retirement-town standards. Strong healthcare infrastructure
@@ -72,7 +81,9 @@ export function Body() {
         Security untaxed).
       </p>
 
-      <h3>Chattanooga, TN</h3>
+      <h3>
+        <Link href="/should-i-move-to/chattanooga-tn">Chattanooga, TN</Link>
+      </h3>
       <p>
         Four mild seasons, a walkable riverfront downtown, and a cost of
         living that&apos;s roughly 10% below the national average. No state

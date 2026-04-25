@@ -42,15 +42,21 @@ export function Body() {
 
       <h2>Top cities for remote workers</h2>
 
-      <h3>Boise, ID</h3>
+      <h3>
+        <Link href="/should-i-move-to/boise-city-id">Boise, ID</Link>
+      </h3>
       <p>
         The poster child for remote-work arbitrage. Cheap by coastal
         standards, four real seasons, clean air, a walkable downtown core,
-        and very low crime. If you&apos;re moving from San Francisco or
-        Seattle, your dollar stretches roughly 40% further.
+        and very low crime. If you&apos;re moving from{" "}
+        <Link href="/should-i-move-to/san-francisco-ca">San Francisco</Link> or{" "}
+        <Link href="/should-i-move-to/seattle-wa">Seattle</Link>, your
+        dollar stretches roughly 40% further.
       </p>
 
-      <h3>Chattanooga, TN</h3>
+      <h3>
+        <Link href="/should-i-move-to/chattanooga-tn">Chattanooga, TN</Link>
+      </h3>
       <p>
         Gigabit fiber was rolled out citywide a decade ago — it&apos;s
         nicknamed &quot;Gig City&quot; for good reason. Combine that with
@@ -59,7 +65,9 @@ export function Body() {
         remote-worker-optimized cities in America.
       </p>
 
-      <h3>Des Moines, IA</h3>
+      <h3>
+        <Link href="/should-i-move-to/des-moines-ia">Des Moines, IA</Link>
+      </h3>
       <p>
         Often overlooked, but scores high on our remote-worker profile.
         Low cost, walkable downtown, low crime, and cleaner air than most
@@ -67,7 +75,9 @@ export function Body() {
         comfortable weather is a fair deal for 40% lower rent.
       </p>
 
-      <h3>Asheville, NC</h3>
+      <h3>
+        <Link href="/should-i-move-to/asheville-nc">Asheville, NC</Link>
+      </h3>
       <p>
         Mild climate, mountain air, a concentrated walkable downtown, and
         cost of living that — while rising — is still far below coastal
@@ -75,7 +85,9 @@ export function Body() {
         remote or hybrid, which means coworking spaces and community exist.
       </p>
 
-      <h3>Greenville, SC</h3>
+      <h3>
+        <Link href="/should-i-move-to/greenville-sc">Greenville, SC</Link>
+      </h3>
       <p>
         A walkable downtown redevelopment, mild climate, strong
         affordability, and proximity to mountains and beaches. Greenville

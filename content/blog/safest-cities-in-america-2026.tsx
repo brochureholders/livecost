@@ -38,7 +38,9 @@ export function Body() {
 
       <h2>Top safest US cities</h2>
 
-      <h3>Irvine, CA</h3>
+      <h3>
+        <Link href="/should-i-move-to/irvine-ca">Irvine, CA</Link>
+      </h3>
       <p>
         Consistently one of the safest large cities in America. Planned
         community, high median income, no dense urban core. Property
@@ -46,26 +48,34 @@ export function Body() {
         quarter.
       </p>
 
-      <h3>Naperville, IL</h3>
+      <h3>
+        <Link href="/should-i-move-to/naperville-il">Naperville, IL</Link>
+      </h3>
       <p>
         Another perennially top-rated safe city. Chicago suburb, affluent,
         tight community. Low on almost every crime category.
       </p>
 
-      <h3>Gilbert, AZ</h3>
+      <h3>
+        <Link href="/should-i-move-to/gilbert-az">Gilbert, AZ</Link>
+      </h3>
       <p>
         Phoenix suburb with a reputation for low crime and highly-rated
         schools. Growing fast as families flee more expensive coastal
         metros.
       </p>
 
-      <h3>Cary, NC</h3>
+      <h3>
+        <Link href="/should-i-move-to/cary-nc">Cary, NC</Link>
+      </h3>
       <p>
         Research Triangle suburb. High education, high income, low crime —
         the standard pattern for our safest-cities list.
       </p>
 
-      <h3>Frisco, TX</h3>
+      <h3>
+        <Link href="/should-i-move-to/frisco-tx">Frisco, TX</Link>
+      </h3>
       <p>
         DFW suburb, corporate HQs, master-planned, low crime. Same profile
         as Cary and Plano on the safety dimension.

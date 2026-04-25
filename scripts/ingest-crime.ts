@@ -13,6 +13,17 @@
  *
  * Run: npx tsx scripts/ingest-crime.ts
  * Requires: API_DATA_GOV_KEY + NEXT_PUBLIC_SUPABASE_URL + service-role key.
+ *
+ * KNOWN OUTAGE (2026-04-25): the api.usa.gov endpoint backing this script
+ * was returning HTTP 403 from AWS ELB with no body — looks like a routing
+ * change at api.usa.gov, not an auth issue (X-Api-Key header and api_key
+ * query both reject identically). Last 500 cities ingested with this
+ * pipeline still have crime data; the new 500 added in the 2026-04-25
+ * city expansion are missing it. To retry:
+ *   1. curl -i "https://api.usa.gov/crime/fbi/cde/agency/byStateAbbr/CA?api_key=$KEY"
+ *   2. If 200, just re-run this script (it upserts on conflict).
+ *   3. If still 403, check https://crime-data-explorer.app.cloud.gov/ for
+ *      any API status notes.
  */
 import { config as loadEnv } from "dotenv";
 import { createClient } from "@supabase/supabase-js";

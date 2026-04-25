@@ -11,6 +11,8 @@ import * as bestRetirees from "./best-cities-for-retirees-2026";
 import * as bestRemoteWorkers from "./best-cities-for-remote-workers-2026";
 import * as quizGuide from "./where-should-i-move-quiz-guide";
 import * as safestCities from "./safest-cities-in-america-2026";
+import * as bestCities2026 from "./best-cities-to-move-to-in-2026";
+import * as cheapestRetire from "./cheapest-places-to-retire-in-2026";
 
 export const articles: Article[] = [
   { meta: calcGuide.meta, Body: calcGuide.Body },
@@ -24,6 +26,8 @@ export const articles: Article[] = [
   { meta: bestRemoteWorkers.meta, Body: bestRemoteWorkers.Body },
   { meta: quizGuide.meta, Body: quizGuide.Body },
   { meta: safestCities.meta, Body: safestCities.Body },
+  { meta: bestCities2026.meta, Body: bestCities2026.Body },
+  { meta: cheapestRetire.meta, Body: cheapestRetire.Body },
 ];
 
 /** Most recent first. */
