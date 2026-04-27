@@ -12,6 +12,7 @@ import {
   getUrbRankScoresForCity,
 } from "@/lib/urbrank-score";
 import type { DimensionKey } from "@/lib/urbrank-score";
+import { shouldNoIndexCity } from "@/lib/coverage";
 import { generateNarrative } from "@/lib/city-narrative";
 import Breadcrumbs from "@/components/profile/Breadcrumbs";
 import ScoreDisplay from "@/components/urbrank/ScoreDisplay";
@@ -59,6 +60,9 @@ export async function generateMetadata({
     title: `Should I Move to ${city.name}, ${city.state}? UrbRank Score & Analysis`,
     description: `${city.name}, ${city.state} UrbRank Score. ${headline} Affordability, safety, climate, walkability, jobs — scored against every US city.`,
     alternates: { canonical: `/should-i-move-to/${slug}` },
+    ...(shouldNoIndexCity(slug)
+      ? { robots: { index: false, follow: true } }
+      : {}),
     openGraph: {
       title: `Should I Move to ${city.name}, ${city.state}?`,
       description: `UrbRank Score: ${headline} Scored across 7 dimensions.`,

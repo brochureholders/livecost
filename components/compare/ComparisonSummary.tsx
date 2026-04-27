@@ -34,9 +34,9 @@ export default function ComparisonSummary({ a, b }: Props) {
   if (hA != null && hB != null && Math.abs(hA - hB) >= 2) {
     const cheaperHousing = hA < hB ? a.name : b.name;
     const pricierHousing = hA < hB ? b.name : a.name;
-    const diff = Math.abs(hA - hB) / Math.max(hA, hB) * 100;
+    const diff = (Math.abs(hA - hB) / Math.min(hA, hB)) * 100;
     sentences.push(
-      `Housing costs are roughly ${diff.toFixed(0)}% lower in ${cheaperHousing} than in ${pricierHousing}.`,
+      `Housing costs are roughly ${diff.toFixed(0)}% higher in ${pricierHousing} than in ${cheaperHousing}.`,
     );
   }
 

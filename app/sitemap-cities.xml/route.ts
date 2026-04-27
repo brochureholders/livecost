@@ -1,4 +1,5 @@
 import { getTopCitySlugs } from "@/lib/cities";
+import { profilePriority } from "@/lib/coverage";
 import { SITEMAP } from "@/lib/site";
 import { xmlResponse, urlsetXml, type SitemapUrl } from "@/lib/sitemap-utils";
 
@@ -13,7 +14,7 @@ export async function GET() {
       path: `/cost-of-living/${slug}`,
       lastmod: today,
       changefreq: "monthly",
-      priority: 0.8,
+      priority: profilePriority(slug),
     });
   }
   // UrbRank Score pages — one per top 600 cities (matches generateStaticParams).
@@ -22,7 +23,7 @@ export async function GET() {
       path: `/should-i-move-to/${slug}`,
       lastmod: today,
       changefreq: "monthly",
-      priority: 0.8,
+      priority: profilePriority(slug),
     });
   }
   return xmlResponse(urlsetXml(urls));

@@ -27,7 +27,11 @@ function fmt(v: number | null, format: Row["format"]): string {
   return v.toFixed(1);
 }
 
-function diffLabel(row: Row): {
+function diffLabel(
+  row: Row,
+  nameA: string,
+  nameB: string,
+): {
   text: string;
   winner: "a" | "b" | "tie" | null;
 } {
@@ -35,15 +39,18 @@ function diffLabel(row: Row): {
     return { text: "—", winner: null };
   const diff = row.aValue - row.bValue;
   if (Math.abs(diff) < (row.format === "index" ? 0.5 : 1)) {
-    return { text: "≈ equal", winner: "tie" };
+    if (diff === 0) return { text: "≈ equal", winner: "tie" };
+    const dir = diff > 0 ? nameA : nameB;
+    return { text: `≈ equal (${dir} slightly higher)`, winner: "tie" };
   }
-  const pctBase = Math.abs(row.bValue) > 0 ? Math.abs(row.bValue) : 1;
-  const pct = Math.abs((diff / pctBase) * 100).toFixed(1);
   const aBigger = diff > 0;
   const aWins = row.lowerIsBetter ? !aBigger : aBigger;
-  const verb = aBigger ? "higher" : "lower";
+  const smaller = Math.min(Math.abs(row.aValue), Math.abs(row.bValue));
+  const pctBase = smaller > 0 ? smaller : 1;
+  const pct = ((Math.abs(diff) / pctBase) * 100).toFixed(1);
+  const higherName = aBigger ? nameA : nameB;
   return {
-    text: `${pct}% ${verb} in A`,
+    text: `${pct}% higher in ${higherName}`,
     winner: aWins ? "a" : "b",
   };
 }
@@ -103,41 +110,63 @@ export default function ComparisonTable({ a, b }: Props) {
     },
   ];
 
+  const yearA = ca?.year ?? null;
+  const yearB = cb?.year ?? null;
+  const yearGap =
+    yearA != null && yearB != null ? Math.abs(yearA - yearB) : 0;
+
   return (
-    <div className="overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-      <table className="w-full text-sm">
-        <thead className="bg-[var(--background)] text-left text-[var(--muted)]">
-          <tr>
-            <th className="px-5 py-3 font-medium">Metric</th>
-            <th className="px-5 py-3 font-medium">{a.name}</th>
-            <th className="px-5 py-3 font-medium">{b.name}</th>
-            <th className="px-5 py-3 font-medium">Difference</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[var(--border)]">
-          {rows.map((row) => {
-            const d = diffLabel(row);
-            return (
-              <tr key={row.label}>
-                <td className="px-5 py-3 font-medium">{row.label}</td>
-                <td
-                  className={`px-5 py-3 tabular-nums ${d.winner === "a" ? "text-emerald-700 font-semibold" : ""}`}
-                >
-                  {fmt(row.aValue, row.format)}
-                </td>
-                <td
-                  className={`px-5 py-3 tabular-nums ${d.winner === "b" ? "text-emerald-700 font-semibold" : ""}`}
-                >
-                  {fmt(row.bValue, row.format)}
-                </td>
-                <td className="px-5 py-3 text-[var(--muted)] tabular-nums">
-                  {d.text}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-[var(--background)] text-left text-[var(--muted)]">
+            <tr>
+              <th className="px-5 py-3 font-medium">Metric</th>
+              <th className="px-5 py-3 font-medium">{a.name}</th>
+              <th className="px-5 py-3 font-medium">{b.name}</th>
+              <th className="px-5 py-3 font-medium">Difference</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border)]">
+            {rows.map((row) => {
+              const d = diffLabel(row, a.name, b.name);
+              return (
+                <tr key={row.label}>
+                  <td className="px-5 py-3 font-medium">{row.label}</td>
+                  <td
+                    className={`px-5 py-3 tabular-nums ${d.winner === "a" ? "text-emerald-700 font-semibold" : ""}`}
+                  >
+                    {fmt(row.aValue, row.format)}
+                  </td>
+                  <td
+                    className={`px-5 py-3 tabular-nums ${d.winner === "b" ? "text-emerald-700 font-semibold" : ""}`}
+                  >
+                    {fmt(row.bValue, row.format)}
+                  </td>
+                  <td className="px-5 py-3 text-[var(--muted)] tabular-nums">
+                    {d.text}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {(yearA != null || yearB != null) && (
+        <div
+          className={`border-t border-[var(--border)] px-5 py-3 text-xs ${
+            yearGap >= 2
+              ? "bg-amber-50 text-amber-900"
+              : "text-[var(--muted)]"
+          }`}
+        >
+          {yearGap >= 2
+            ? `Heads up: data vintages differ by ${yearGap} years — ${a.name} ${yearA}, ${b.name} ${yearB}. Compare with caution.`
+            : yearA === yearB
+              ? `Data year: ${yearA}.`
+              : `Data year: ${a.name} ${yearA ?? "—"}, ${b.name} ${yearB ?? "—"}.`}
+        </div>
+      )}
     </div>
   );
 }

@@ -40,18 +40,17 @@ export async function generateMetadata({
   const cities = await getCitiesByState(state.code);
   const ranked = sortByIndex(cities).filter((c) => c.cost_index != null);
   const cheapest = ranked[0];
-  const year = new Date().getFullYear();
 
   const description = cheapest
     ? `The cheapest city in ${state.name} is ${cheapest.name} with a cost index of ${cheapest.cost_index?.toFixed(0)}. See all ${cities.length} cities ranked.`
     : `Ranked cost of living for every city in ${state.name}. Compare housing, salaries, and affordability.`;
 
   return {
-    title: `Cheapest Cities to Live in ${state.name} (${year}) — Ranked by Cost | UrbRank`,
+    title: `Cheapest Cities to Live in ${state.name} — Ranked by Cost | UrbRank`,
     description,
     alternates: { canonical: `/cheapest-cities/${slug}` },
     openGraph: {
-      title: `Cheapest Cities in ${state.name} (${year})`,
+      title: `Cheapest Cities in ${state.name}`,
       description,
       type: "article",
     },

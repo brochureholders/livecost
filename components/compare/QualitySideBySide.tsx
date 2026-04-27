@@ -126,36 +126,62 @@ export default function QualitySideBySide({ a, b }: Props) {
         ? "md:grid-cols-2"
         : "md:grid-cols-1";
 
+  // Quality + demographics ride on different Supabase tables with their own
+  // year columns; show the latest of each side so a stale row doesn't fly
+  // under the radar.
+  const yearA =
+    Math.max(a.quality?.year ?? 0, a.demographics?.year ?? 0) || null;
+  const yearB =
+    Math.max(b.quality?.year ?? 0, b.demographics?.year ?? 0) || null;
+  const yearGap = yearA != null && yearB != null ? Math.abs(yearA - yearB) : 0;
+
   return (
-    <div className={`grid grid-cols-1 ${gridCols} gap-4`}>
-      {populated.map((section) => (
-        <div
-          key={section.title}
-          className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6"
-        >
-          <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--muted)]">
-            {section.title}
-          </h3>
-          <dl className="mt-4 space-y-3 text-sm">
-            {section.rows.map((row) => (
-              <div key={row.label} className="grid grid-cols-3 gap-2">
-                <dt className="col-span-1 text-[var(--muted)]">{row.label}</dt>
-                <dd className="col-span-1 tabular-nums text-right">
-                  {row.aValue}
-                </dd>
-                <dd className="col-span-1 tabular-nums text-right">
-                  {row.bValue}
-                </dd>
-              </div>
-            ))}
-          </dl>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-[var(--muted)] border-t border-[var(--border)] pt-2">
-            <span />
-            <span className="text-right">{a.name}</span>
-            <span className="text-right">{b.name}</span>
+    <div className="space-y-3">
+      <div className={`grid grid-cols-1 ${gridCols} gap-4`}>
+        {populated.map((section) => (
+          <div
+            key={section.title}
+            className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6"
+          >
+            <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--muted)]">
+              {section.title}
+            </h3>
+            <dl className="mt-4 space-y-3 text-sm">
+              {section.rows.map((row) => (
+                <div key={row.label} className="grid grid-cols-3 gap-2">
+                  <dt className="col-span-1 text-[var(--muted)]">{row.label}</dt>
+                  <dd className="col-span-1 tabular-nums text-right">
+                    {row.aValue}
+                  </dd>
+                  <dd className="col-span-1 tabular-nums text-right">
+                    {row.bValue}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-[var(--muted)] border-t border-[var(--border)] pt-2">
+              <span />
+              <span className="text-right">{a.name}</span>
+              <span className="text-right">{b.name}</span>
+            </div>
           </div>
+        ))}
+      </div>
+      {(yearA != null || yearB != null) && (
+        <div
+          className={`rounded-xl border px-5 py-3 text-xs ${
+            yearGap >= 2
+              ? "border-amber-300 bg-amber-50 text-amber-900"
+              : "border-[var(--border)] text-[var(--muted)]"
+          }`}
+        >
+          {yearGap >= 2
+            ? `Heads up: data vintages differ by ${yearGap} years — ${a.name} ${yearA}, ${b.name} ${yearB}. Compare with caution.`
+            : yearA === yearB
+              ? `Data year: ${yearA}.`
+              : `Data year: ${a.name} ${yearA ?? "—"}, ${b.name} ${yearB ?? "—"}.`}
         </div>
-      ))}
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTopCitySlugs } from "@/lib/cities";
 import { formatPair } from "@/lib/comparison";
+import { comparePriority } from "@/lib/coverage";
 import { SITEMAP } from "@/lib/site";
 import { xmlResponse, urlsetXml, type SitemapUrl } from "@/lib/sitemap-utils";
 
@@ -28,12 +29,18 @@ export async function GET(
     for (let j = i + 1; j < slugs.length; j++) {
       if (idx >= end) break;
       if (idx >= start) {
-        urls.push({
-          path: `/compare/${formatPair(slugs[i], slugs[j])}`,
-          lastmod: today,
-          changefreq: "monthly",
-          priority: 0.6,
-        });
+        const priority = comparePriority(slugs[i], slugs[j]);
+        // priority === null means the pair is too data-poor to be a useful
+        // comparison — skip the URL but still advance idx so pagination
+        // boundaries match what sitemap.xml advertises.
+        if (priority != null) {
+          urls.push({
+            path: `/compare/${formatPair(slugs[i], slugs[j])}`,
+            lastmod: today,
+            changefreq: "monthly",
+            priority,
+          });
+        }
       }
       idx++;
     }

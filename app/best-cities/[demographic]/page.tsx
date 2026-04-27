@@ -24,13 +24,12 @@ export async function generateMetadata({
   if (!d) {
     return { title: "Not found — UrbRank", robots: { index: false, follow: false } };
   }
-  const year = new Date().getFullYear();
   return {
-    title: `${d.heroTitle} (${year}) — UrbRank`,
+    title: `${d.heroTitle} — UrbRank`,
     description: `${d.heroSubtitle} Complete ranking with UrbRank Score, affordability, safety, and quality of life data.`,
     alternates: { canonical: `/best-cities/${d.slug}` },
     openGraph: {
-      title: `${d.heroTitle} (${year})`,
+      title: d.heroTitle,
       description: d.heroSubtitle,
       type: "article",
     },

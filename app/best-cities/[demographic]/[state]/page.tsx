@@ -34,9 +34,8 @@ export async function generateMetadata({
   if (!d || !s) {
     return { title: "Not found — UrbRank", robots: { index: false, follow: false } };
   }
-  const year = new Date().getFullYear();
   return {
-    title: `Best Cities in ${s.name} for ${d.label} (${year}) — UrbRank`,
+    title: `Best Cities in ${s.name} for ${d.label} — UrbRank`,
     description: `The best cities in ${s.name} for ${d.singular}. UrbRank Score, affordability, safety, climate, and quality of life — ranked.`,
     alternates: { canonical: `/best-cities/${d.slug}/${s.slug}` },
     openGraph: {

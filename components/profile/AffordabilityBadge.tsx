@@ -14,7 +14,7 @@ function tier(index: number | null) {
       label: "Affordable",
       bg: "bg-emerald-100",
       fg: "text-emerald-900",
-      description: `${100 - index}% below national average`,
+      description: `${(100 - index).toFixed(0)}% below national average`,
     };
   }
   if (index <= 110) {

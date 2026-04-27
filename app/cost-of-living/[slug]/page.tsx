@@ -5,8 +5,10 @@ import {
   getOtherCitiesInState,
   getTopCitySlugs,
 } from "@/lib/cities";
+import { shouldNoIndexCity } from "@/lib/coverage";
 import { getSimilarCostCities } from "@/lib/internal-links";
 import AffordabilityBadge from "@/components/profile/AffordabilityBadge";
+import DataCompletenessBadge from "@/components/DataCompletenessBadge";
 import Breadcrumbs from "@/components/profile/Breadcrumbs";
 import CompareSection from "@/components/profile/CompareSection";
 import CostBreakdownChart from "@/components/profile/CostBreakdownChart";
@@ -48,7 +50,6 @@ export async function generateMetadata({
   }
 
   const costs = city.costs;
-  const year = costs?.year ?? new Date().getFullYear();
   const index = costs?.cost_index;
   const direction =
     index != null && index >= 100 ? "above" : index != null ? "below" : null;
@@ -67,11 +68,14 @@ export async function generateMetadata({
       : "calculated from Census and BLS data.";
 
   return {
-    title: `Cost of Living in ${city.name}, ${city.state} (${year}) — Housing, Salary & More | UrbRank`,
+    title: `Cost of Living in ${city.name}, ${city.state} — Housing, Salary & More | UrbRank`,
     description: `The cost of living in ${city.name}, ${city.state} is ${vsNational} Median rent: ${rent}/mo. Median income: ${income}. Compare with other cities.`,
     alternates: { canonical: `/cost-of-living/${slug}` },
+    ...(shouldNoIndexCity(slug)
+      ? { robots: { index: false, follow: true } }
+      : {}),
     openGraph: {
-      title: `Cost of Living in ${city.name}, ${city.state} (${year})`,
+      title: `Cost of Living in ${city.name}, ${city.state}`,
       description: `Housing, salary, demographics, and quality of life in ${city.name}. ${vsNational}`,
       type: "article",
     },
@@ -187,7 +191,8 @@ export default async function CityProfilePage({
           <p className="mt-2 text-[var(--muted)]">
             Climate, safety, and walkability indicators.
           </p>
-          <div className="mt-6">
+          <div className="mt-6 space-y-4">
+            <DataCompletenessBadge slugs={[city.slug]} />
             <QualityOfLife quality={city.quality} />
           </div>
         </section>

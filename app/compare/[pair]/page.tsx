@@ -14,7 +14,9 @@ import {
   parsePair,
   verdict,
 } from "@/lib/comparison";
+import { shouldNoIndexComparison } from "@/lib/coverage";
 import AffordabilityBadge from "@/components/profile/AffordabilityBadge";
+import DataCompletenessBadge from "@/components/DataCompletenessBadge";
 import ComparisonBars from "@/components/compare/ComparisonBars";
 import ComparisonCalculator from "@/components/compare/ComparisonCalculator";
 import ComparisonSummary from "@/components/compare/ComparisonSummary";
@@ -66,7 +68,6 @@ export async function generateMetadata({
   }
 
   const v = verdict(a.costs?.cost_index, b.costs?.cost_index);
-  const year = a.costs?.year ?? b.costs?.year ?? new Date().getFullYear();
 
   const headline =
     v.cheaper === "a"
@@ -78,11 +79,14 @@ export async function generateMetadata({
           : `${a.name} and ${b.name} compared`;
 
   return {
-    title: `${a.name}, ${a.state_code} vs ${b.name}, ${b.state_code}: Cost of Living Comparison (${year}) | UrbRank`,
+    title: `${a.name}, ${a.state_code} vs ${b.name}, ${b.state_code}: Cost of Living Comparison | UrbRank`,
     description: `${headline}. Compare housing, salaries, groceries, and more side by side.`,
     alternates: { canonical: `/compare/${formatPair(a.slug, b.slug)}` },
+    ...(shouldNoIndexComparison(a.slug, b.slug)
+      ? { robots: { index: false, follow: true } }
+      : {}),
     openGraph: {
-      title: `${a.name} vs ${b.name} — Cost of Living ${year}`,
+      title: `${a.name} vs ${b.name} — Cost of Living`,
       description: headline,
       type: "article",
     },
@@ -223,6 +227,10 @@ export default async function ComparePage({
           />
         </div>
       </section>
+
+      <div className="mt-12">
+        <DataCompletenessBadge slugs={[a.slug, b.slug]} />
+      </div>
 
       <section className="mt-16">
         <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">

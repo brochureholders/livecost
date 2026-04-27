@@ -12,11 +12,11 @@ export type CityCardData = {
 export default function CityCard({ city }: { city: CityCardData }) {
   const vsNational = city.index - 100;
   const diffLabel =
-    vsNational === 0
+    Math.abs(vsNational) < 0.5
       ? "at national average"
       : vsNational > 0
-        ? `${vsNational}% above average`
-        : `${Math.abs(vsNational)}% below average`;
+        ? `${vsNational.toFixed(0)}% above average`
+        : `${Math.abs(vsNational).toFixed(0)}% below average`;
 
   return (
     <Link
@@ -29,7 +29,7 @@ export default function CityCard({ city }: { city: CityCardData }) {
           <p className="text-sm text-[var(--muted)]">{city.state}</p>
         </div>
         <span className="text-2xl font-semibold tabular-nums text-[var(--accent)]">
-          {city.index}
+          {city.index.toFixed(0)}
         </span>
       </div>
       <dl className="mt-6 grid grid-cols-2 gap-4 text-sm">
