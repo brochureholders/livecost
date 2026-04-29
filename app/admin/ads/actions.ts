@@ -141,7 +141,7 @@ export async function createAd(formData: FormData) {
     throw new Error("Provide either an image (or image URL) or raw HTML");
   }
   await persist(input);
-  redirect("/admin/ads");
+  redirect(`/admin/ads?slot=${input.slot}`);
 }
 
 export async function updateAd(id: string, formData: FormData) {
@@ -152,7 +152,7 @@ export async function updateAd(id: string, formData: FormData) {
   }
   if (!input.name) throw new Error("Name is required");
   await persist({ ...input, id });
-  redirect("/admin/ads");
+  redirect(`/admin/ads?slot=${input.slot}`);
 }
 
 export async function deleteAd(id: string, slot: AdSlotName) {
@@ -160,7 +160,7 @@ export async function deleteAd(id: string, slot: AdSlotName) {
   const { error } = await supabase.from("ad_blocks").delete().eq("id", id);
   if (error) throw new Error(error.message);
   revalidateSlot(slot);
-  redirect("/admin/ads");
+  redirect(`/admin/ads?slot=${slot}`);
 }
 
 export async function toggleEnabled(
