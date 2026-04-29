@@ -21,7 +21,12 @@ loadEnv({ path: ".env.local" });
 
 const YEAR = 2022;
 const PARAM_PM25 = "88101";
-const BOX_HALF_DEGREES = 0.3; // ~20 miles at mid-latitudes
+// Three-tier geographic fallback so cities with no city-specific monitor
+// (mostly Texas mid-size + Oregon/Tennessee/Indiana suburbs) still get a
+// regional reading rather than nothing. Order matches preference: tighter
+// boxes give more city-specific signal; wider tiers only run on miss.
+const BOX_HALF_DEGREES_PRIMARY = 0.3; // ~20 miles  — city
+const BOX_HALF_DEGREES_REGIONAL = 1.0; // ~70 miles  — county / nearest metro
 const API_BASE = "https://aqs.epa.gov/data/api";
 const REQUEST_DELAY_MS = 1000;
 const MAX_RETRIES = 4;
@@ -122,9 +127,10 @@ async function fetchWithRetry<T>(url: string, label: string): Promise<T | null> 
   return null;
 }
 
-async function fetchAnnualPm25(
+async function fetchAnnualPm25Box(
   lat: number,
   lon: number,
+  halfDegrees: number,
 ): Promise<AnnualRow[] | null> {
   const qp = new URLSearchParams({
     email: AQS_EMAIL!,
@@ -132,18 +138,64 @@ async function fetchAnnualPm25(
     param: PARAM_PM25,
     bdate: `${YEAR}0101`,
     edate: `${YEAR}1231`,
-    minlat: (lat - BOX_HALF_DEGREES).toFixed(4),
-    maxlat: (lat + BOX_HALF_DEGREES).toFixed(4),
-    minlon: (lon - BOX_HALF_DEGREES).toFixed(4),
-    maxlon: (lon + BOX_HALF_DEGREES).toFixed(4),
+    minlat: (lat - halfDegrees).toFixed(4),
+    maxlat: (lat + halfDegrees).toFixed(4),
+    minlon: (lon - halfDegrees).toFixed(4),
+    maxlon: (lon + halfDegrees).toFixed(4),
   });
   const json = await fetchWithRetry<AqsResponse>(
     `${API_BASE}/annualData/byBox?${qp.toString()}`,
-    `aqs box ${lat.toFixed(2)},${lon.toFixed(2)}`,
+    `aqs box ${halfDegrees}° ${lat.toFixed(2)},${lon.toFixed(2)}`,
   );
   if (!json || json.Header?.[0]?.status !== "Success") return null;
   return json.Data ?? [];
 }
+
+/** State-level PM2.5 fallback. Cached per-state since the response is large
+ *  and the same for every city in the state. Used only when both box queries
+ *  return zero monitors (Bend OR, isolated Mountain West cities, etc.). */
+const stateCache = new Map<string, AnnualRow[] | null>();
+async function fetchAnnualPm25State(
+  stateCode: string,
+): Promise<AnnualRow[] | null> {
+  if (stateCache.has(stateCode)) return stateCache.get(stateCode) ?? null;
+  // EPA AQS uses 2-digit FIPS state codes for byState queries; we have the
+  // 2-letter postal code, so look up the FIPS in the small static map.
+  const fips = STATE_POSTAL_TO_FIPS[stateCode];
+  if (!fips) {
+    stateCache.set(stateCode, null);
+    return null;
+  }
+  const qp = new URLSearchParams({
+    email: AQS_EMAIL!,
+    key: AQS_KEY!,
+    param: PARAM_PM25,
+    bdate: `${YEAR}0101`,
+    edate: `${YEAR}1231`,
+    state: fips,
+  });
+  const json = await fetchWithRetry<AqsResponse>(
+    `${API_BASE}/annualData/byState?${qp.toString()}`,
+    `aqs state ${stateCode}`,
+  );
+  const data =
+    json && json.Header?.[0]?.status === "Success" ? json.Data ?? [] : null;
+  stateCache.set(stateCode, data);
+  return data;
+}
+
+/** USPS postal → FIPS state code (2-digit). The byState AQS endpoint
+ *  requires FIPS, not the postal abbreviation. */
+const STATE_POSTAL_TO_FIPS: Record<string, string> = {
+  AL: "01", AK: "02", AZ: "04", AR: "05", CA: "06", CO: "08", CT: "09",
+  DE: "10", DC: "11", FL: "12", GA: "13", HI: "15", ID: "16", IL: "17",
+  IN: "18", IA: "19", KS: "20", KY: "21", LA: "22", ME: "23", MD: "24",
+  MA: "25", MI: "26", MN: "27", MS: "28", MO: "29", MT: "30", NE: "31",
+  NV: "32", NH: "33", NJ: "34", NM: "35", NY: "36", NC: "37", ND: "38",
+  OH: "39", OK: "40", OR: "41", PA: "42", RI: "44", SC: "45", SD: "46",
+  TN: "47", TX: "48", UT: "49", VT: "50", VA: "51", WA: "53", WV: "54",
+  WI: "55", WY: "56",
+};
 
 /** Average PM2.5 across unique (site, POC) pairs to avoid double-counting
  *  the same monitor reported in multiple aggregation durations. Prefer the
@@ -213,13 +265,45 @@ async function main() {
 
   const out: { city_id: string; year: number; air_quality_index: number }[] = [];
   let ok = 0;
+  let okRegional = 0; // tier 2
+  let okState = 0; // tier 3
   let noMonitors = 0;
   let apiFail = 0;
 
   for (let i = 0; i < withCoords.length; i++) {
     const city = withCoords[i];
-    const rows = await fetchAnnualPm25(city.latitude!, city.longitude!);
-    if (rows == null) {
+
+    // Tier 1: city box (~20 mi)
+    let rows = await fetchAnnualPm25Box(
+      city.latitude!,
+      city.longitude!,
+      BOX_HALF_DEGREES_PRIMARY,
+    );
+    let tier: "city" | "regional" | "state" = "city";
+    let meanPm25 = rows ? aggregatePm25(rows) : null;
+
+    // Tier 2: regional box (~70 mi)
+    if (meanPm25 == null) {
+      await sleep(REQUEST_DELAY_MS);
+      rows = await fetchAnnualPm25Box(
+        city.latitude!,
+        city.longitude!,
+        BOX_HALF_DEGREES_REGIONAL,
+      );
+      meanPm25 = rows ? aggregatePm25(rows) : null;
+      if (meanPm25 != null) tier = "regional";
+    }
+
+    // Tier 3: state-level mean. Cached per-state so this fires at most
+    // 50 extra requests across the whole run.
+    if (meanPm25 == null) {
+      await sleep(REQUEST_DELAY_MS);
+      const stateRows = await fetchAnnualPm25State(city.state_code);
+      meanPm25 = stateRows ? aggregatePm25(stateRows) : null;
+      if (meanPm25 != null) tier = "state";
+    }
+
+    if (rows == null && meanPm25 == null) {
       apiFail++;
       console.warn(
         `[${i + 1}/${withCoords.length}] ${city.name}, ${city.state_code}: API error`,
@@ -227,25 +311,29 @@ async function main() {
       await sleep(REQUEST_DELAY_MS);
       continue;
     }
-    const meanPm25 = aggregatePm25(rows);
     if (meanPm25 == null) {
       noMonitors++;
       if ((i + 1) % 25 === 0 || i < 5) {
         console.warn(
-          `[${i + 1}/${withCoords.length}] ${city.name}, ${city.state_code}: no PM2.5 monitors within ${BOX_HALF_DEGREES}°`,
+          `[${i + 1}/${withCoords.length}] ${city.name}, ${city.state_code}: no PM2.5 monitors at any tier`,
         );
       }
       await sleep(REQUEST_DELAY_MS);
       continue;
     }
+
     const aqi = pm25ToAqi(meanPm25);
     out.push({ city_id: city.id, year: YEAR, air_quality_index: aqi });
-    ok++;
+    if (tier === "city") ok++;
+    else if (tier === "regional") okRegional++;
+    else okState++;
 
-    if ((i + 1) % 25 === 0 || i < 3) {
+    const tag =
+      tier === "city" ? "" : tier === "regional" ? " (regional)" : " (state)";
+    if (tier !== "city" || (i + 1) % 25 === 0 || i < 3) {
       console.log(
         `[${i + 1}/${withCoords.length}] ${city.name}, ${city.state_code}: ` +
-          `PM2.5=${meanPm25.toFixed(2)} µg/m³ → AQI ${aqi}`,
+          `PM2.5=${meanPm25.toFixed(2)} µg/m³ → AQI ${aqi}${tag}`,
       );
     }
 
@@ -254,7 +342,7 @@ async function main() {
   }
 
   console.log(
-    `\nOK: ${ok}, no-monitor: ${noMonitors}, API fail: ${apiFail}`,
+    `\nOK city: ${ok}, regional fallback: ${okRegional}, state fallback: ${okState}, no-monitor: ${noMonitors}, API fail: ${apiFail}`,
   );
   if (out.length > 0) {
     console.log(`Final flush: ${out.length}`);
