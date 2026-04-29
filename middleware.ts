@@ -33,8 +33,16 @@ export function middleware(req: NextRequest) {
     const pass = process.env.ADMIN_PASSWORD;
     if (!user || !pass) {
       // Misconfiguration — refuse to serve rather than expose an open admin.
+      // Reports which specific var is missing (without leaking values) so
+      // a Vercel scope/typo issue is diagnosable from the response itself.
+      const missing = [
+        !user && "ADMIN_USER",
+        !pass && "ADMIN_PASSWORD",
+      ]
+        .filter(Boolean)
+        .join(", ");
       return new NextResponse(
-        "Admin not configured. Set ADMIN_USER and ADMIN_PASSWORD env vars.",
+        `Admin not configured. Missing env var(s): ${missing}. Set them in Vercel → Settings → Environment Variables → Production, then redeploy.`,
         { status: 503 },
       );
     }
