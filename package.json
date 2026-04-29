@@ -9,7 +9,9 @@
     "lint": "eslint",
     "refresh": "tsx scripts/refresh-all.ts",
     "refresh:scores": "tsx scripts/refresh-all.ts --skip-ingest",
-    "refresh:audit": "tsx scripts/refresh-all.ts --only=audit"
+    "refresh:audit": "tsx scripts/refresh-all.ts --only=audit",
+    "retry:crime": "tsx scripts/retry-crime.ts",
+    "retry:crime:probe": "tsx scripts/retry-crime.ts --probe"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",

@@ -253,24 +253,42 @@ async function fetchOffense(
   return fetchJson<SummarizedResponse>(url, `${offense} ${ori}`);
 }
 
-async function upsertQualityMerge(rows: QualityPartial[]) {
-  if (rows.length === 0) return;
-
-  // Fetch existing quality rows so we preserve weather fields set by
-  // ingest-weather.ts (ON CONFLICT preserves unlisted columns, but our
-  // columns overlap — this path just keeps the crime columns clean).
+/** Upsert with per-chunk retry. Returns the count actually persisted; the
+ *  caller uses this to decide whether to flag the run as partial. */
+async function upsertQualityMerge(rows: QualityPartial[]): Promise<number> {
+  if (rows.length === 0) return 0;
   const CHUNK = 200;
+  let persisted = 0;
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
-    const { error } = await supabase
-      .from("city_quality")
-      .upsert(chunk, { onConflict: "city_id,year" });
-    if (error) {
+    let lastErr: string | null = null;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const { error } = await supabase
+          .from("city_quality")
+          .upsert(chunk, { onConflict: "city_id,year" });
+        if (!error) {
+          persisted += chunk.length;
+          lastErr = null;
+          break;
+        }
+        lastErr = error.message;
+      } catch (e) {
+        lastErr = e instanceof Error ? e.message : String(e);
+      }
+      const backoff = 1000 * 2 ** (attempt - 1);
+      console.warn(
+        `  city_quality upsert [${i}..${i + chunk.length}] retry ${attempt}/${MAX_RETRIES} in ${backoff}ms — ${lastErr}`,
+      );
+      await sleep(backoff);
+    }
+    if (lastErr) {
       console.error(
-        `  city_quality upsert failed [${i}..${i + chunk.length}]: ${error.message}`,
+        `  city_quality upsert failed [${i}..${i + chunk.length}] after ${MAX_RETRIES} retries: ${lastErr}`,
       );
     }
   }
+  return persisted;
 }
 
 // ---------------------------------------------------------------------------
@@ -285,10 +303,13 @@ async function main() {
     `Loaded ${[...citiesByState.values()].flat().length} cities across ${states.length} states\n`,
   );
 
-  const out: QualityPartial[] = [];
   let matched = 0;
   let unmatched = 0;
   let missing = 0;
+  let totalPersisted = 0;
+  // Per-state outcome so a flapping API or a Supabase blip surfaces clearly
+  // at the end of the run instead of being buried mid-log.
+  const stateStatus: { state: string; matched: number; persisted: number; failed: number }[] = [];
 
   for (let s = 0; s < states.length; s++) {
     const state = states[s];
@@ -297,9 +318,13 @@ async function main() {
     const agencies = await fetchStateAgencies(state);
     if (agencies.length === 0) {
       console.warn(`[${s + 1}/${states.length}] ${state}: no agencies returned`);
+      stateStatus.push({ state, matched: 0, persisted: 0, failed: 0 });
       continue;
     }
 
+    // Buffer for THIS state only — flushed before we move on so a later
+    // failure doesn't lose the work we already did.
+    const stateRows: QualityPartial[] = [];
     let stateMatched = 0;
     for (const city of cities) {
       const agency = findAgency(city.name, agencies);
@@ -323,7 +348,7 @@ async function main() {
         continue;
       }
 
-      out.push({
+      stateRows.push({
         city_id: city.id,
         year: YEAR,
         violent_crime_rate: vRate,
@@ -335,16 +360,36 @@ async function main() {
       });
     }
 
+    // Persist this state's data immediately. If Supabase blips here we lose
+    // at most one state's worth (typically <30 rows); the prior states are
+    // already safe in the DB and the script is idempotent so a retry just
+    // refills the gap.
+    const persisted = await upsertQualityMerge(stateRows);
+    const failed = stateRows.length - persisted;
+    totalPersisted += persisted;
+    stateStatus.push({ state, matched: stateMatched, persisted, failed });
+
+    const tail = failed > 0 ? `  ⚠ ${failed} rows failed to persist` : "";
     console.log(
-      `[${s + 1}/${states.length}] ${state}: matched ${stateMatched}/${cities.length} cities`,
+      `[${s + 1}/${states.length}] ${state}: matched ${stateMatched}/${cities.length} cities, persisted ${persisted}${tail}`,
     );
   }
 
   console.log(
     `\nMatched ${matched} agencies (${unmatched} unmatched). Missing offense data: ${missing}.`,
   );
-  console.log(`Upserting ${out.length} city_quality rows…`);
-  await upsertQualityMerge(out);
+  console.log(`Persisted ${totalPersisted}/${matched - missing} rows to city_quality.`);
+
+  const partialStates = stateStatus.filter((s) => s.failed > 0);
+  if (partialStates.length > 0) {
+    console.log(
+      `\n⚠ ${partialStates.length} states had partial persistence — re-run to fill gaps:`,
+    );
+    for (const s of partialStates) {
+      console.log(`  ${s.state}: ${s.failed} rows lost`);
+    }
+    process.exit(1);
+  }
   console.log("Done.");
 }
 
