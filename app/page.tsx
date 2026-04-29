@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import AdSlot from "@/components/AdSlot";
 import CityCard from "@/components/CityCard";
 import CompareForm from "@/components/compare/CompareForm";
 import { getCityOptions } from "@/lib/cities";
@@ -107,6 +108,8 @@ export default async function Home() {
           </p>
         )}
       </section>
+
+      <AdSlot name="homepage-mid" pathname="/" />
 
       {/* Best-for rankings */}
       <section className="py-16 border-t border-[var(--border)]">

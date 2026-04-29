@@ -15,6 +15,7 @@ import {
   verdict,
 } from "@/lib/comparison";
 import { shouldNoIndexComparison } from "@/lib/coverage";
+import AdSlot from "@/components/AdSlot";
 import AffordabilityBadge from "@/components/profile/AffordabilityBadge";
 import DataCompletenessBadge from "@/components/DataCompletenessBadge";
 import ComparisonBars from "@/components/compare/ComparisonBars";
@@ -252,6 +253,11 @@ export default async function ComparePage({
           indexB={b.costs?.cost_index ?? null}
         />
       </section>
+
+      <AdSlot
+        name="compare-mid"
+        pathname={`/compare/${formatPair(a.slug, b.slug)}`}
+      />
 
       <section className="mt-16">
         <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">

@@ -7,6 +7,7 @@ import {
 } from "@/lib/cities";
 import { shouldNoIndexCity } from "@/lib/coverage";
 import { getSimilarCostCities } from "@/lib/internal-links";
+import AdSlot from "@/components/AdSlot";
 import AffordabilityBadge from "@/components/profile/AffordabilityBadge";
 import DataCompletenessBadge from "@/components/DataCompletenessBadge";
 import Breadcrumbs from "@/components/profile/Breadcrumbs";
@@ -182,6 +183,8 @@ export default async function CityProfilePage({
           <Demographics demographics={city.demographics} />
         </div>
       </section>
+
+      <AdSlot name="city-profile-mid" pathname={`/cost-of-living/${slug}`} />
 
       {city.quality && (
         <section className="mt-16">

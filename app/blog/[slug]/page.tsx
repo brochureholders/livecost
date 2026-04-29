@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import AdSlot from "@/components/AdSlot";
 import {
   allSlugs,
   articlesByDate,
@@ -158,6 +159,8 @@ export default async function ArticlePage({
           <Body />
         </div>
       </article>
+
+      <AdSlot name="blog-post-end" pathname={`/blog/${meta.slug}`} />
 
       {related.length > 0 && (
         <aside className="mt-16 border-t border-[var(--border)] pt-10">
