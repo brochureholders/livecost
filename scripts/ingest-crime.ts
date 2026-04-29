@@ -71,6 +71,8 @@ type CityRow = {
   id: string;
   name: string;
   state_code: string;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 type SummarizedResponse = {
@@ -223,7 +225,7 @@ function agencyRate(
 async function loadCitiesByState(): Promise<Map<string, CityRow[]>> {
   const { data, error } = await supabase
     .from("cities")
-    .select("id, name, state_code")
+    .select("id, name, state_code, latitude, longitude")
     .order("population", { ascending: false, nullsFirst: false });
   if (error) throw new Error(`Failed to load cities: ${error.message}`);
   const byState = new Map<string, CityRow[]>();
@@ -233,6 +235,76 @@ async function loadCitiesByState(): Promise<Map<string, CityRow[]>> {
     byState.set(c.state_code, arr);
   }
   return byState;
+}
+
+/** Reverse-geocode lat/lon to a county via the FCC Census Block API. Free,
+ *  no key, returns the county name as Census uses it (no "County" suffix —
+ *  e.g. "Honolulu", "Orleans" for Louisiana parish, "Anchorage" for Alaska
+ *  borough). Used only when an agency-name lookup fails, so worst case
+ *  ~108 calls per run. */
+type FccBlockResponse = {
+  County?: { FIPS?: string; name?: string };
+  State?: { code?: string; name?: string };
+};
+const countyCache = new Map<string, { name: string; fips: string } | null>();
+async function lookupCounty(
+  lat: number,
+  lon: number,
+): Promise<{ name: string; fips: string } | null> {
+  const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+  if (countyCache.has(key)) return countyCache.get(key) ?? null;
+  const url = `https://geo.fcc.gov/api/census/block/find?latitude=${lat}&longitude=${lon}&format=json`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      countyCache.set(key, null);
+      return null;
+    }
+    const json = (await res.json()) as FccBlockResponse;
+    if (!json.County?.name || !json.County.FIPS) {
+      countyCache.set(key, null);
+      return null;
+    }
+    const result = { name: json.County.name, fips: json.County.FIPS };
+    countyCache.set(key, result);
+    return result;
+  } catch {
+    countyCache.set(key, null);
+    return null;
+  }
+}
+
+/** Find the county-level sheriff/parish agency in a state's agency list.
+ *  Tries several common naming patterns. Returns null when no match — some
+ *  states (e.g. Hawaii) don't have county sheriffs at all. */
+function findCountySheriff(
+  countyName: string,
+  agencies: Agency[],
+): Agency | null {
+  const norm = normalize(countyName);
+  if (!norm) return null;
+  const patterns = [
+    `${norm} county sheriff's office`,
+    `${norm} county sheriff office`,
+    `${norm} county sheriff's department`,
+    `${norm} county sheriff department`,
+    `${norm} parish sheriff's office`,
+    `${norm} parish sheriff office`,
+    `${norm} sheriff's office`,
+    `${norm} sheriff office`,
+    `${norm} sheriffs office`,
+  ];
+  for (const p of patterns) {
+    const found = agencies.find((a) => normalize(a.agency_name) === p);
+    if (found) return found;
+  }
+  // Looser fallback: starts with county name AND mentions "sheriff"
+  return (
+    agencies.find((a) => {
+      const n = normalize(a.agency_name);
+      return n.startsWith(norm) && n.includes("sheriff");
+    }) ?? null
+  );
 }
 
 async function fetchStateAgencies(stateCode: string): Promise<Agency[]> {
@@ -304,6 +376,7 @@ async function main() {
   );
 
   let matched = 0;
+  let countyFallback = 0;
   let unmatched = 0;
   let missing = 0;
   let totalPersisted = 0;
@@ -327,13 +400,33 @@ async function main() {
     const stateRows: QualityPartial[] = [];
     let stateMatched = 0;
     for (const city of cities) {
-      const agency = findAgency(city.name, agencies);
+      let agency = findAgency(city.name, agencies);
+      let usedCountyFallback = false;
+
+      if (!agency) {
+        // City has no municipal PD match — try the county sheriff's office
+        // for whichever county the city's centroid falls in. Catches CDPs,
+        // sheriff-only jurisdictions, and consolidated city-counties whose
+        // names don't match a PD pattern.
+        if (city.latitude != null && city.longitude != null) {
+          const county = await lookupCounty(city.latitude, city.longitude);
+          if (county) {
+            const sheriff = findCountySheriff(county.name, agencies);
+            if (sheriff) {
+              agency = sheriff;
+              usedCountyFallback = true;
+            }
+          }
+        }
+      }
+
       if (!agency) {
         unmatched++;
         continue;
       }
       stateMatched++;
-      matched++;
+      if (usedCountyFallback) countyFallback++;
+      else matched++;
 
       const [violent, property] = await Promise.all([
         fetchOffense(agency.ori, "violent-crime"),
@@ -376,9 +469,11 @@ async function main() {
   }
 
   console.log(
-    `\nMatched ${matched} agencies (${unmatched} unmatched). Missing offense data: ${missing}.`,
+    `\nMatched ${matched} city agencies + ${countyFallback} county-sheriff fallbacks (${unmatched} truly unmatched). Missing offense data: ${missing}.`,
   );
-  console.log(`Persisted ${totalPersisted}/${matched - missing} rows to city_quality.`);
+  console.log(
+    `Persisted ${totalPersisted}/${matched + countyFallback - missing} rows to city_quality.`,
+  );
 
   const partialStates = stateStatus.filter((s) => s.failed > 0);
   if (partialStates.length > 0) {
