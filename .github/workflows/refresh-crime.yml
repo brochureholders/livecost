@@ -1,0 +1,89 @@
+name: Refresh FBI crime data
+
+# Runs npm run retry:crime on a schedule. The script probes the FBI CDE
+# canary first; if the API is degraded it exits 1 in ~3 seconds, costing
+# almost nothing. When the API is healthy the script runs the full ingest
+# (~25 min) and the workflow refreshes data/coverage-report.json + pushes
+# the change back so the live /coverage page and DataCompletenessBadge
+# pick it up automatically.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   API_DATA_GOV_KEY
+#   NEXT_PUBLIC_SUPABASE_URL
+#   SUPABASE_SERVICE_ROLE_KEY
+
+on:
+  schedule:
+    # Every 6 hours, on the hour. UTC.
+    - cron: "0 */6 * * *"
+  # Allow manual runs from the Actions tab — handy after configuring
+  # secrets the first time, or when you want to trigger a refresh.
+  workflow_dispatch:
+
+permissions:
+  # Required so the auto-commit step can push data/coverage-report.json
+  # back to the repo.
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      # Probe + ingest. Captures the exit code so subsequent steps can branch
+      # on whether the FBI API was actually up. continue-on-error: true means
+      # the workflow doesn't fail when the API is down — that's expected.
+      - name: Probe + ingest crime data
+        id: ingest
+        env:
+          API_DATA_GOV_KEY: ${{ secrets.API_DATA_GOV_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set +e
+          npm run retry:crime
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+
+      # Only refresh the audit when ingest actually persisted new data.
+      # Skips entirely when the canary returned 403 — no point bloating
+      # git history with no-op commits.
+      - name: Refresh coverage audit
+        if: steps.ingest.outputs.exit == '0'
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run refresh:audit
+
+      # Commit only if the JSON actually changed, so a re-run when nothing
+      # in the DB has shifted doesn't pollute the commit log.
+      - name: Commit refreshed coverage report
+        if: steps.ingest.outputs.exit == '0'
+        run: |
+          if git diff --quiet -- data/coverage-report.json; then
+            echo "No changes to coverage-report.json — skipping commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/coverage-report.json
+          git commit -m "Auto-refresh coverage report after crime ingest"
+          git push
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ "${{ steps.ingest.outputs.exit }}" = "0" ]; then
+            echo "✅ FBI ingest succeeded; coverage report refreshed."
+          else
+            echo "🟡 FBI API still degraded (exit ${{ steps.ingest.outputs.exit }}). No data written — will retry next schedule."
+          fi
