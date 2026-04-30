@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getTopCitySlugs, getCitiesByState } from "@/lib/cities";
+import { getCityIndex, getCitiesByState } from "@/lib/cities";
 import { PROFILES, PROFILE_LABELS } from "@/lib/urbrank-score";
 
 export const revalidate = 86400;
@@ -19,13 +19,16 @@ export const metadata: Metadata = {
 };
 
 export default async function ShouldIMoveIndexPage() {
-  const slugs = await getTopCitySlugs(600);
+  // Pull the full city index — already population-sorted — so the featured
+  // grid renders with proper names rather than reverse-engineering them
+  // from slugs (consolidated cities like "Nashville-Davidson metropolitan
+  // government (balance)" mangle when split on "-").
+  const allCities = await getCityIndex();
+  const totalCities = allCities.length;
+  const featured = allCities.slice(0, 100); // top 100 by population
 
-  // Friendly display: group first 60 into a showcase grid, then link "full list"
-  const featured = slugs.slice(0, 60);
-
-  // Grab a few state-level samples for internal-link density
-  const sampleStates = ["CA", "TX", "FL", "NY", "CO", "WA"] as const;
+  // Grab a handful of state-level samples for internal-link density.
+  const sampleStates = ["CA", "TX", "FL", "NY", "IL", "CO", "WA", "GA"] as const;
   const stateSamples = await Promise.all(
     sampleStates.map((sc) => getCitiesByState(sc, 6).then((cs) => ({ sc, cs }))),
   );
@@ -77,7 +80,7 @@ export default async function ShouldIMoveIndexPage() {
             >
               <div className="font-semibold">{PROFILE_LABELS[p]}</div>
               <div className="text-sm text-[var(--muted)] mt-1">
-                {p === "general" && "Balanced weighting across all 6 core dimensions."}
+                {p === "general" && "Balanced weighting across all 7 core dimensions."}
                 {p === "family" && "Safety + affordability + schools + climate."}
                 {p === "retiree" && "Climate + affordability + safety + walkability."}
                 {p === "remote_worker" && "Affordability + climate + walkability + environment."}
@@ -89,32 +92,36 @@ export default async function ShouldIMoveIndexPage() {
       </section>
 
       <section className="mt-16">
-        <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
-          Featured cities
-        </h2>
-        <p className="mt-2 text-[var(--muted)]">
-          See the UrbRank Score for a sample of the 300 largest US cities.
-        </p>
+        <div className="flex items-end justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
+              Featured cities
+            </h2>
+            <p className="mt-2 text-[var(--muted)]">
+              The 100 largest US cities, scored. We rank{" "}
+              {totalCities.toLocaleString()} cities total — use the search box
+              up top to jump to any of them.
+            </p>
+          </div>
+          <Link
+            href="/rankings"
+            className="text-sm font-medium text-[var(--accent)] hover:text-[var(--accent-hover)]"
+          >
+            View all rankings →
+          </Link>
+        </div>
         <ul className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-          {featured.map((slug) => {
-            const pretty = slug
-              .replace(/-[a-z]{2}$/, "")
-              .split("-")
-              .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-              .join(" ");
-            const state = slug.slice(-2).toUpperCase();
-            return (
-              <li key={slug}>
-                <Link
-                  href={`/should-i-move-to/${slug}`}
-                  className="block rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm hover:border-[var(--accent)] transition-colors"
-                >
-                  {pretty}{" "}
-                  <span className="text-[var(--muted)]">{state}</span>
-                </Link>
-              </li>
-            );
-          })}
+          {featured.map((c) => (
+            <li key={c.slug}>
+              <Link
+                href={`/should-i-move-to/${c.slug}`}
+                className="block rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm hover:border-[var(--accent)] transition-colors"
+              >
+                {c.name}{" "}
+                <span className="text-[var(--muted)]">{c.state_code}</span>
+              </Link>
+            </li>
+          ))}
         </ul>
       </section>
 
@@ -122,6 +129,10 @@ export default async function ShouldIMoveIndexPage() {
         <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
           Browse by state
         </h2>
+        <p className="mt-2 text-[var(--muted)]">
+          A sample from eight states. Search by name above for any of the{" "}
+          {totalCities.toLocaleString()} cities we track.
+        </p>
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {stateSamples.map(({ sc, cs }) => {
             if (cs.length === 0) return null;
