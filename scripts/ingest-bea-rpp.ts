@@ -17,26 +17,22 @@
  * healthcare, and other services. We assign it to both transportation
  * and healthcare since we don't have a better breakdown.
  *
- * City → MSA mapping: BEA publishes by MSA (CBSA). We infer each city's
- * MSA via:
- *   1. Direct name match — if an MSA name contains our city's name,
- *      that city is in that MSA.
- *   2. Proximity fallback — any city that doesn't match by name gets
- *      assigned to the MSA whose name-matched anchor city is closest
- *      by haversine distance.
+ * City → MSA mapping: BEA publishes by CBSA GEOID (5-digit) for each
+ * MSA. We resolve each city's CBSA via the official Census Geocoder
+ * API — call once per city's lat/lon, get back the canonical CBSA
+ * GEOID, match directly against BEA's geoFips column. Results cached
+ * to data/census/city-cbsa-cache.json so subsequent runs are instant.
  *
- * This isn't as accurate as the Census CBSA crosswalk (which would
- * require another API call), but it's correct for the ~200 cities that
- * share an MSA name with a larger city, and close enough for most
- * suburb cases (a suburb 15 miles from Cleveland shouldn't differ
- * meaningfully from Cleveland-Elyria MSA on RPPs).
+ * Cities outside any CBSA (rural standalone places) fall back to the
+ * legacy proximity heuristic: pick the nearest geocoder-matched city's
+ * CBSA, capped at 200 miles, otherwise skip.
  *
  * Run: npx tsx scripts/ingest-bea-rpp.ts
  */
 import { config as loadEnv } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { resolve, dirname } from "node:path";
 
 loadEnv({ path: ".env.local" });
 
@@ -148,20 +144,91 @@ function indexMsas(rows: MsaRow[]): Map<string, MsaData> {
   return m;
 }
 
-/** Extract primary city names from an MSA name:
- *    "Austin-Round Rock, TX (Metropolitan Statistical Area)"
- *    → ["Austin", "Round Rock"], "TX"
- */
-function parseMsaName(name: string): { cities: string[]; state: string | null } {
-  // Strip the trailing (... Area) portion
-  const cleaned = name.replace(/\s*\([^)]*\)\s*$/, "").trim();
-  // Split on ", " for the state suffix
-  const parts = cleaned.split(", ");
-  if (parts.length < 2) return { cities: [cleaned], state: null };
-  const state = parts[parts.length - 1].trim().split("-")[0]; // "TX-AR" → "TX" (primary)
-  const cityPart = parts.slice(0, -1).join(", ");
-  const cities = cityPart.split("-").map((c) => c.trim());
-  return { cities, state };
+// ---------------------------------------------------------------------------
+// County → CBSA resolution via FCC reverse-geocode + Census crosswalk
+// ---------------------------------------------------------------------------
+// FCC's free Block API takes a lat/lon and returns the 5-digit county FIPS.
+// The Census-derived JSON crosswalk then maps that FIPS to a CBSA GEOID,
+// which matches BEA's geoFips column directly. Lookups cached to disk.
+
+const CACHE_PATH = resolve(process.cwd(), "data/census/city-cbsa-cache.json");
+type CbsaHit = { geoid: string; countyFips: string; countyName: string } | null;
+type Cache = Record<string, CbsaHit>;
+
+function loadCache(): Cache {
+  if (!existsSync(CACHE_PATH)) return {};
+  try {
+    return JSON.parse(readFileSync(CACHE_PATH, "utf8")) as Cache;
+  } catch {
+    return {};
+  }
+}
+function saveCache(cache: Cache): void {
+  mkdirSync(dirname(CACHE_PATH), { recursive: true });
+  writeFileSync(CACHE_PATH, JSON.stringify(cache, null, 2));
+}
+
+const COUNTY_TO_CBSA_PATH = resolve(
+  process.cwd(),
+  "data/census/county-to-cbsa.json",
+);
+function loadCountyToCbsa(): Record<string, string> {
+  if (!existsSync(COUNTY_TO_CBSA_PATH)) {
+    throw new Error(
+      `Missing county→CBSA crosswalk at ${COUNTY_TO_CBSA_PATH}. ` +
+        `Generate it once via scripts/_build-cbsa-crosswalk.ts.`,
+    );
+  }
+  return JSON.parse(readFileSync(COUNTY_TO_CBSA_PATH, "utf8")) as Record<
+    string,
+    string
+  >;
+}
+
+type FccBlockResponse = {
+  County?: { FIPS?: string; name?: string };
+};
+
+/** Resolve a (lat, lon) to its CBSA GEOID via FCC + the county→CBSA
+ *  crosswalk. Returns null for cities outside any CBSA (rural standalone
+ *  places — about 5% of the US population doesn't live in a CBSA). Cached
+ *  per (lat, lon) rounded to 4 decimals. */
+async function lookupCbsa(
+  lat: number,
+  lon: number,
+  countyToCbsa: Record<string, string>,
+  cache: Cache,
+): Promise<CbsaHit> {
+  const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+  if (key in cache) return cache[key];
+
+  const url = `https://geo.fcc.gov/api/census/block/find?latitude=${lat}&longitude=${lon}&format=json`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      cache[key] = null;
+      return null;
+    }
+    const json = (await res.json()) as FccBlockResponse;
+    const countyFips = json.County?.FIPS;
+    const countyName = json.County?.name;
+    if (!countyFips || !countyName) {
+      cache[key] = null;
+      return null;
+    }
+    const cbsa = countyToCbsa[countyFips];
+    if (!cbsa) {
+      // County exists but isn't part of any CBSA (rural standalone county).
+      cache[key] = null;
+      return null;
+    }
+    const hit: CbsaHit = { geoid: cbsa, countyFips, countyName };
+    cache[key] = hit;
+    return hit;
+  } catch {
+    cache[key] = null;
+    return null;
+  }
 }
 
 function haversineMiles(
@@ -219,28 +286,58 @@ async function main() {
   const cities = (citiesRaw ?? []) as City[];
   console.log(`\nLoaded ${cities.length} cities.\n`);
 
-  // Phase 1: direct name match. For each MSA, find cities in our DB whose
-  // name appears in the MSA name AND state matches.
-  const cityToMsa = new Map<string, string>(); // city_id → MSA geoFips
-  for (const msa of msaMap.values()) {
-    const { cities: msaCities, state } = parseMsaName(msa.geoName);
-    if (!state) continue;
-    for (const mc of msaCities) {
-      const normalized = mc.toLowerCase();
-      for (const c of cities) {
-        if (c.state_code !== state) continue;
-        if (cityToMsa.has(c.id)) continue;
-        if (c.name.toLowerCase() === normalized) {
-          cityToMsa.set(c.id, msa.geoFips);
-        }
-      }
+  // Phase 1: FCC reverse-geocode + Census crosswalk. For each city's
+  // lat/lon, FCC returns the 5-digit county FIPS; the crosswalk maps that
+  // to a 5-digit CBSA GEOID, which matches BEA's geoFips directly. No
+  // name heuristic, no proximity guess.
+  const countyToCbsa = loadCountyToCbsa();
+  console.log(`Loaded ${Object.keys(countyToCbsa).length} county→CBSA mappings.`);
+  const lookupCache = loadCache();
+  const cacheSizeBefore = Object.keys(lookupCache).length;
+  const cityToMsa = new Map<string, string>();
+  let cbsaMatched = 0;
+  let outsideCbsa = 0;
+  let cbsaMissingFips = 0;
+  let progress = 0;
+  for (const c of cities) {
+    progress++;
+    if (c.latitude == null || c.longitude == null) continue;
+    const hit = await lookupCbsa(c.latitude, c.longitude, countyToCbsa, lookupCache);
+    if (!hit) {
+      outsideCbsa++;
+      continue;
+    }
+    if (msaMap.has(hit.geoid)) {
+      cityToMsa.set(c.id, hit.geoid);
+      cbsaMatched++;
+    } else {
+      // City is in a CBSA but BEA doesn't publish RPP for it (BEA only
+      // covers Metropolitan, not Micropolitan, so µSA cities miss). Falls
+      // through to proximity below.
+      cbsaMissingFips++;
+    }
+    // Persist the cache every 50 lookups so a mid-run abort doesn't
+    // discard accumulated work.
+    if (progress % 50 === 0) {
+      saveCache(lookupCache);
+      console.log(
+        `  resolved ${progress}/${cities.length} (${cbsaMatched} matched, ${outsideCbsa} non-CBSA so far)`,
+      );
     }
   }
-  const directMatched = cityToMsa.size;
-  console.log(`  direct name match: ${directMatched} cities`);
+  saveCache(lookupCache);
+  const cacheSizeAfter = Object.keys(lookupCache).length;
+  console.log(
+    `  CBSA match: ${cbsaMatched} cities (${cbsaMissingFips} in a CBSA without BEA RPP, ${outsideCbsa} not in any CBSA)`,
+  );
+  console.log(
+    `  cache: ${cacheSizeBefore} → ${cacheSizeAfter} entries (${cacheSizeAfter - cacheSizeBefore} new lookups)\n`,
+  );
 
-  // Phase 2: proximity fallback. For each unmatched city, find the MSA
-  // whose name-matched anchor city is closest.
+  // Phase 2: proximity fallback for cities the geocoder couldn't place in a
+  // BEA-covered MSA. Anchored on the geocoder-matched cities, capped at
+  // 200 miles so isolated rural cities aren't force-mapped to a distant
+  // metro that's nothing like them.
   type Anchor = { msaFips: string; lat: number; lon: number };
   const anchors: Anchor[] = [];
   for (const c of cities) {
@@ -274,7 +371,7 @@ async function main() {
     }
   }
   console.log(
-    `  proximity match: ${proximityMatched} cities, skipped ${proximitySkipped}\n`,
+    `  proximity fallback: ${proximityMatched} cities, skipped ${proximitySkipped}\n`,
   );
 
   // Fetch current city_costs for the target year so we can blend BEA with
