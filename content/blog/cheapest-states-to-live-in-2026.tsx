@@ -69,30 +69,40 @@ export function Body() {
 
       <h3>4. Oklahoma</h3>
       <p>
-        Tulsa and Oklahoma City both sit comfortably below the national
-        cost-of-living average. State income tax caps are lower than most
-        neighbors, and gas prices run among the cheapest in the country.
+        <Link href="/cost-of-living/tulsa-ok">Tulsa</Link> and{" "}
+        <Link href="/cost-of-living/oklahoma-city-ok">Oklahoma City</Link>{" "}
+        both sit comfortably below the national cost-of-living average.
+        State income tax caps are lower than most neighbors, and gas
+        prices run among the cheapest in the country.
       </p>
 
       <h3>5. Kansas</h3>
       <p>
-        Wichita and the smaller metros keep the state average well under
-        100. Kansas has one of the lowest median rents in the country
-        despite being geographically central.
+        <Link href="/cost-of-living/wichita-ks">Wichita</Link> and the
+        smaller metros keep the state average well under 100. Kansas has
+        one of the lowest median rents in the country despite being
+        geographically central.
       </p>
 
       <h3>6. Alabama</h3>
       <p>
-        Huntsville is the economic engine; Birmingham, Montgomery, and
-        Mobile are all meaningfully cheap by national standards. See the{" "}
+        <Link href="/cost-of-living/huntsville-al">Huntsville</Link> is the
+        economic engine;{" "}
+        <Link href="/cost-of-living/birmingham-al">Birmingham</Link>,{" "}
+        <Link href="/cost-of-living/montgomery-al">Montgomery</Link>, and{" "}
+        <Link href="/cost-of-living/mobile-al">Mobile</Link> are all
+        meaningfully cheap by national standards. See the{" "}
         <Link href="/cheapest-cities/alabama">Alabama ranking</Link>.
       </p>
 
       <h3>7. Indiana</h3>
       <p>
-        Indianapolis, Fort Wayne, and a long tail of small towns keep the
-        state average below 95. Property taxes run low and the state has a
-        flat income tax under 3.5%.
+        <Link href="/cost-of-living/indianapolis-city-balance-in">
+          Indianapolis
+        </Link>
+        , <Link href="/cost-of-living/fort-wayne-in">Fort Wayne</Link>, and a
+        long tail of small towns keep the state average below 95. Property
+        taxes run low and the state has a flat income tax under 3.5%.
       </p>
 
       <h3>8. Missouri</h3>
@@ -100,22 +110,28 @@ export function Body() {
         Kansas City and St. Louis have median rents in the ~$1,100/month
         range — roughly half of what coastal metros charge. See{" "}
         <Link href="/cost-of-living/kansas-city-mo">Kansas City</Link> and{" "}
-        <Link href="/cost-of-living/saint-louis-mo">St. Louis</Link> for
+        <Link href="/cost-of-living/st-louis-mo">St. Louis</Link> for
         side-by-side detail.
       </p>
 
       <h3>9. Iowa</h3>
       <p>
-        Des Moines leads the state; smaller metros are cheaper still.
-        Iowa ranks consistently well on quality-of-life measures alongside
-        its low cost base.
+        <Link href="/cost-of-living/des-moines-ia">Des Moines</Link> leads
+        the state; smaller metros are cheaper still. Iowa ranks
+        consistently well on quality-of-life measures alongside its low
+        cost base.
       </p>
 
       <h3>10. Kentucky</h3>
       <p>
-        Louisville and Lexington both sit in the affordable tier.
-        Kentucky&apos;s state income tax is low-single-digits, and housing
-        is cheap even in the major cities.
+        <Link href="/cost-of-living/louisville-jefferson-county-metro-government-balance-ky">
+          Louisville
+        </Link>{" "}
+        and{" "}
+        <Link href="/cost-of-living/lexington-fayette-ky">Lexington</Link>{" "}
+        both
+        sit in the affordable tier. Kentucky&apos;s state income tax is
+        low-single-digits, and housing is cheap even in the major cities.
       </p>
 
       <h2>States worth mentioning: no income tax</h2>

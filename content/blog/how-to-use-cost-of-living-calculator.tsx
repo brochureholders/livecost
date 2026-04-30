@@ -87,11 +87,14 @@ export function Body() {
         <li>
           <strong>You plan to buy instead of rent.</strong> Most indices lean
           on rental data, which understates the difference in markets where
-          home prices have outpaced rents (Austin, Denver, Seattle).
+          home prices have outpaced rents (Austin,{" "}
+          <Link href="/cost-of-living/denver-co">Denver</Link>,{" "}
+          <Link href="/cost-of-living/seattle-wa">Seattle</Link>).
         </li>
         <li>
           <strong>You work from home.</strong> Transportation weighting
-          becomes less relevant; an index-heavy transit city like NYC looks
+          becomes less relevant; an index-heavy transit city like{" "}
+          <Link href="/cost-of-living/new-york-ny">NYC</Link> looks
           relatively cheaper if you&apos;re not commuting.
         </li>
         <li>
@@ -109,10 +112,11 @@ export function Body() {
       <h2>How to read the result in practice</h2>
       <p>
         Treat the equivalent-salary number as a floor, not a target. If the
-        calculator says you need $108,000, that&apos;s what it takes to
-        preserve your current standard of living on paper. Negotiate higher
-        than that if you can, especially in markets where housing has
-        outpaced wages.
+        calculator says you need $108,000 in{" "}
+        <Link href="/cost-of-living/san-francisco-ca">San Francisco</Link>,
+        that&apos;s what it takes to preserve your current standard of
+        living on paper. Negotiate higher than that if you can, especially
+        in markets where housing has outpaced wages.
       </p>
       <p>
         Two other numbers worth pulling alongside the calculator output:

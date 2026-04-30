@@ -99,8 +99,13 @@ export function Body() {
         tracking inflation but was never designed to compare cities to each
         other — its values use per-metro base periods, so a direct ratio
         between two city CPIs can mislead. CPI is best used for per-category
-        directional signals (is healthcare getting more expensive faster in
-        Atlanta than Nashville?) rather than level comparisons.
+        directional signals (is healthcare getting more expensive faster in{" "}
+        <Link href="/cost-of-living/atlanta-ga">Atlanta</Link> than{" "}
+        <Link href="/cost-of-living/nashville-davidson-metropolitan-government-balance-tn">
+          Nashville
+        </Link>
+        ?) rather
+        than level comparisons.
       </p>
       <p>
         <strong>Regional Price Parities (RPPs)</strong> are published by the{" "}

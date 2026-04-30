@@ -127,7 +127,9 @@ export function Body() {
       </p>
       <ul>
         <li>
-          <Link href="/cost-of-living/nashville-tn">Nashville, TN</Link>{" "}
+          <Link href="/cost-of-living/nashville-davidson-metropolitan-government-balance-tn">
+            Nashville, TN
+          </Link>{" "}
           — no state income tax, fast-growing, BNA has direct flights
           almost everywhere.
         </li>

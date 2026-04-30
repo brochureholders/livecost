@@ -127,9 +127,9 @@ export function Body() {
       </ul>
       <p>
         These are <em>hard</em> filters — they eliminate cities rather than
-        rank them. Apply them first so you don&apos;t fall in love with
-        Asheville before realizing it&apos;s six hours from anyone in your
-        family.
+        rank them. Apply them first so you don&apos;t fall in love with{" "}
+        <Link href="/cost-of-living/asheville-nc">Asheville</Link> before
+        realizing it&apos;s six hours from anyone in your family.
       </p>
 
       <h2>Step 4: read the UrbRank Score pages for your top 5</h2>
@@ -169,7 +169,8 @@ export function Body() {
         cheap rent alone often find themselves bored.
       </p>
       <p>
-        <strong>Trusting vibes over data.</strong> &quot;Austin is cheap!&quot;
+        <strong>Trusting vibes over data.</strong> &quot;
+        <Link href="/cost-of-living/austin-tx">Austin</Link> is cheap!&quot;
         was true in 2015. Check the current numbers, not a feeling from
         five years ago.
       </p>
