@@ -6,12 +6,12 @@ export const revalidate = 86400;
 
 export const metadata: Metadata = {
   title:
-    "US Cost of Living Rankings (2026) — Cheapest, Priciest, Highest Income | UrbRank",
+    "US Cost of Living Rankings — Cheapest, Priciest, Highest Income | UrbRank",
   description:
     "The cheapest, most expensive, highest-income, and lowest-rent US cities — four national rankings built from Census ACS and BLS data.",
   alternates: { canonical: "/rankings" },
   openGraph: {
-    title: "US Cost of Living Rankings (2026)",
+    title: "US Cost of Living Rankings",
     description:
       "Cheapest, priciest, highest-income, and lowest-rent US cities — four rankings, one page.",
     type: "website",

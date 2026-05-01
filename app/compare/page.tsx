@@ -26,11 +26,17 @@ export const metadata: Metadata = {
 type SearchParams = Promise<{ from?: string; to?: string }>;
 
 /** Popular pairs surfaced on the landing page. Kept as a manual list so we
- *  can tune for SEO intent rather than picking by population alone. */
+ *  can tune for SEO intent rather than picking by population alone.
+ *  Slugs MUST be canonical (not vanity aliases) so the link doesn't
+ *  trigger a 301 round-trip — see lib/vanity-slugs.ts. */
 const POPULAR_PAIRS: { label: string; a: string; b: string }[] = [
   { label: "New York vs San Francisco", a: "new-york-ny", b: "san-francisco-ca" },
   { label: "Austin vs Denver", a: "austin-tx", b: "denver-co" },
-  { label: "Chicago vs Nashville", a: "chicago-il", b: "nashville-tn" },
+  {
+    label: "Chicago vs Nashville",
+    a: "chicago-il",
+    b: "nashville-davidson-metropolitan-government-balance-tn",
+  },
   { label: "Seattle vs Portland", a: "seattle-wa", b: "portland-or" },
   { label: "Miami vs Atlanta", a: "miami-fl", b: "atlanta-ga" },
   { label: "Boston vs Philadelphia", a: "boston-ma", b: "philadelphia-pa" },
