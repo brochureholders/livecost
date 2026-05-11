@@ -18,13 +18,21 @@ Statistics (CPI-U).
 | Path | What it is |
 | --- | --- |
 | `/` | Marketing home |
-| `/cost-of-living/[slug]` | Per-city profile (top 500 cities pre-rendered) |
-| `/compare/[slugA]-vs-[slugB]` | Pairwise comparison (19,900 canonical pairs pre-rendered) |
-| `/cheapest-cities/[state]` | State ranking (51 pages: 50 states + DC) |
+| `/cost-of-living/[slug]` | Per-city profile (1,000 cities pre-rendered) |
+| `/should-i-move-to` + `/[slug]` | UrbRank Score landing + per-city radar (600 pre-rendered) |
+| `/compare` + `/[slugA]-vs-[slugB]` | Comparison landing + 31k canonical pairs (top 250 cities) |
 | `/calculator` | Salary-equivalence calculator (URL-shareable query params) |
-| `/sitemap.xml` | Sitemap index |
+| `/quiz` + `/results` | 8-question quiz that re-weights rankings to your priorities |
+| `/best-cities` + `/[demographic]` + `/[state]` | Family / retiree / remote-worker / young-pro leaderboards |
+| `/rankings` + `/[variant]` | Cheapest / priciest / highest-income / cheapest-rent national lists |
+| `/cheapest-cities/[state]` | State cost ranking (50 states + DC) |
+| `/blog` + `/[slug]` | 15 evergreen articles |
+| `/about`, `/methodology`, `/privacy`, `/contact` | Static pages |
+| `/admin` (Basic Auth) | Ad-block management panel (4 slots) |
+| `/coverage` (noindex) | Internal data-coverage debug dashboard |
+| `/sitemap.xml` + sub-sitemaps | Sitemap index, with sub-sitemaps for pages, states, cities, comparisons |
 | `/robots.txt` | Crawler rules |
-| `/api/pageview` | Pageview ingest endpoint |
+| `/api/pageview` | Pageview ingest endpoint (cookieless, no IP) |
 
 ## Prerequisites
 
@@ -80,6 +88,10 @@ See `.env.example` for the full list with descriptions.
 | `SUPABASE_SERVICE_ROLE_KEY` | Ingest scripts, pageview API | Server-only, never client |
 | `CENSUS_API_KEY` | `ingest-census.ts` | Free Census key |
 | `BLS_API_KEY` | `ingest-bls.ts` | Free BLS key, 500 req/day |
+| `API_DATA_GOV_KEY` | `ingest-crime.ts` | Free api.data.gov key; 1k req/hr |
+| `WALKSCORE_API_KEY` | `ingest-walkscore.ts` | Free tier, 5k calls/day |
+| `AQS_EMAIL` + `AQS_KEY` | `ingest-aqs.ts` | EPA AQS, free, paired credentials |
+| `ADMIN_USER` + `ADMIN_PASSWORD` | `/admin` Basic Auth | Single-user, set in `.env.local` + Vercel |
 
 ## Build & deploy
 
@@ -106,16 +118,57 @@ uses the Edge runtime — if your host doesn't support it, swap
 
 ## Data pipeline
 
-Both ingest scripts are idempotent and upsert on `(city_id, year)`:
+All ingest scripts are idempotent and upsert on natural keys
+(`(city_id, year)` or `slug`). Re-running fills any gaps without
+disturbing existing data.
 
-- `scripts/ingest-census.ts` pulls ACS 5-Year variables (income, rent, home
-  value, age, education, poverty, commute) for the top 500 US places, plus
-  the national median rent as the housing-index baseline.
-- `scripts/ingest-bls.ts` pulls CPI-U for ~20 major metros (all items, food,
-  housing, transportation, medical) and computes relative indices against the
-  US city average, then merges into the same `city_costs` rows.
+### Raw ingestion (one script per source)
 
-Re-run either script at any cadence — they fill the current target year.
+- `scripts/ingest-census.ts` — ACS 5-Year income, rent, home value, age,
+  education, poverty, commute for the top 1,000 US places.
+- `scripts/ingest-bls.ts` — CPI-U for ~20 major metros (all items, food,
+  housing, transportation, medical); used as the regional baseline.
+- `scripts/ingest-bea-rpp.ts` — BEA Regional Price Parities for every CBSA,
+  resolved via FCC reverse-geocode + Census CBSA crosswalk (committed in
+  `data/census/county-to-cbsa.json`). 977/1000 cities authoritatively
+  matched, the rest fall back to proximity.
+- `scripts/ingest-walkscore.ts` — Walk Score / Transit Score / Bike Score.
+- `scripts/ingest-weather-ncei.ts` + `ingest-weather.ts` — 30-year climate
+  normals from NOAA NCEI with an Open-Meteo daily-archive fallback.
+- `scripts/ingest-aqs.ts` — EPA AQS annual PM2.5 → AQI. Three-tier
+  geographic fallback (city box → regional box → state mean).
+- `scripts/ingest-crime.ts` — FBI Crime Data Explorer. Tries municipal PD
+  first, falls back to the county sheriff (FCC + crosswalk) for CDPs and
+  consolidated city-counties. Per-state persistence so a transient blip
+  doesn't lose accumulated work.
+- `scripts/fix-latlon-from-gazetteer.ts` — one-time fix for cities with
+  bad lat/lon from earlier ingest runs.
+
+### Derived
+
+- `scripts/recompute-cost-indices.ts` — composes the five cost sub-indices
+  into the headline `cost_index`.
+- `scripts/compute-urbrank-scores.ts` — runs the 7-dimension scoring across
+  all cities and writes `urbrank_scores` rows for the five profile weights.
+- `scripts/audit-coverage.ts` — emits `data/coverage-report.json` with
+  per-dimension fill rate, anomalies, and a diff vs the previous run.
+
+### Orchestration
+
+- `npm run refresh` — full pipeline (ingest → derive → audit).
+- `npm run refresh:scores` — derive + audit only, skipping the slow ingest.
+- `npm run refresh:audit` — just refresh the coverage report.
+- `npm run retry:crime` — probe the FBI API; if up, run the ingest.
+  Wrapped script for cron use.
+- `npm run retry:crime:probe` — probe-only (no DB writes).
+
+### Automation
+
+`.github/workflows/refresh-crime.yml` runs `retry:crime` every 6 hours.
+When the FBI API is healthy the ingest fires, the audit refreshes, and the
+new `data/coverage-report.json` gets auto-committed back to `main` —
+keeping the live `DataCompletenessBadge` and sitemap priorities accurate
+without manual intervention.
 
 ## SEO
 
