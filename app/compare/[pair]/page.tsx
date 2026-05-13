@@ -15,6 +15,14 @@ import {
   verdict,
 } from "@/lib/comparison";
 import { shouldNoIndexComparison } from "@/lib/coverage";
+import {
+  estimatedDrivingMiles,
+  flightTimeHours,
+  formatFlightTime,
+  haversineKm,
+  haversineMiles,
+  roundDistanceFriendly,
+} from "@/lib/distance";
 import AdSlot from "@/components/AdSlot";
 import AffordabilityBadge from "@/components/profile/AffordabilityBadge";
 import DataCompletenessBadge from "@/components/DataCompletenessBadge";
@@ -79,9 +87,24 @@ export async function generateMetadata({
           ? `${a.name} and ${b.name} cost about the same`
           : `${a.name} and ${b.name} compared`;
 
+  // Distance fragment for the meta description — captures the
+  // "how far is X from Y" intent right in the SERP snippet.
+  let distanceFragment = "";
+  if (
+    a.latitude != null &&
+    a.longitude != null &&
+    b.latitude != null &&
+    b.longitude != null
+  ) {
+    const miles = roundDistanceFriendly(
+      haversineMiles(a.latitude, a.longitude, b.latitude, b.longitude),
+    );
+    distanceFragment = ` The two cities are about ${miles.toLocaleString()} miles apart.`;
+  }
+
   return {
     title: `${a.name}, ${a.state_code} vs ${b.name}, ${b.state_code}: Cost of Living Comparison | UrbRank`,
-    description: `${headline}. Compare housing, salaries, groceries, and more side by side.`,
+    description: `${headline}.${distanceFragment} Compare housing, salaries, groceries, and more side by side.`,
     alternates: { canonical: `/compare/${formatPair(a.slug, b.slug)}` },
     ...(shouldNoIndexComparison(a.slug, b.slug)
       ? { robots: { index: false, follow: true } }
@@ -121,14 +144,78 @@ export default async function ComparePage({
   const v = verdict(a.costs?.cost_index, b.costs?.cost_index);
   const suggestions = await getTopCitiesExcluding([a.id, b.id], 10);
 
+  // Distance — null when either city lacks coordinates (extremely rare;
+  // ~100% of our 1k catalog has lat/lon today). When present, drives the
+  // Q&A section, structured data, and the meta description fragment.
+  const distance =
+    a.latitude != null &&
+    a.longitude != null &&
+    b.latitude != null &&
+    b.longitude != null
+      ? (() => {
+          const miles = haversineMiles(a.latitude, a.longitude, b.latitude, b.longitude);
+          const km = haversineKm(a.latitude, a.longitude, b.latitude, b.longitude);
+          return {
+            milesExact: miles,
+            milesRounded: roundDistanceFriendly(miles),
+            kmRounded: roundDistanceFriendly(km),
+            drivingMiles: roundDistanceFriendly(estimatedDrivingMiles(miles)),
+            flightTime: formatFlightTime(flightTimeHours(miles)),
+          };
+        })()
+      : null;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebPage",
     name: `${a.name}, ${a.state_code} vs ${b.name}, ${b.state_code} — Cost of Living`,
     about: [
-      { "@type": "Place", name: `${a.name}, ${a.state}` },
-      { "@type": "Place", name: `${b.name}, ${b.state}` },
+      {
+        "@type": "Place",
+        name: `${a.name}, ${a.state}`,
+        ...(a.latitude != null && a.longitude != null
+          ? {
+              geo: {
+                "@type": "GeoCoordinates",
+                latitude: a.latitude,
+                longitude: a.longitude,
+              },
+            }
+          : {}),
+      },
+      {
+        "@type": "Place",
+        name: `${b.name}, ${b.state}`,
+        ...(b.latitude != null && b.longitude != null
+          ? {
+              geo: {
+                "@type": "GeoCoordinates",
+                latitude: b.latitude,
+                longitude: b.longitude,
+              },
+            }
+          : {}),
+      },
     ],
+  };
+
+  // Q&A snippet schema — Google uses this to surface the distance answer
+  // directly in "how far is X from Y" SERP results.
+  const distanceJsonLd = distance && {
+    "@context": "https://schema.org",
+    "@type": "QAPage",
+    mainEntity: {
+      "@type": "Question",
+      name: `How far is ${a.name} from ${b.name}?`,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text:
+          `${a.name}, ${a.state_code} is about ${distance.milesRounded.toLocaleString()} miles ` +
+          `(${distance.kmRounded.toLocaleString()} km) from ${b.name}, ${b.state_code} in a straight line. ` +
+          `Driving is roughly ${distance.drivingMiles.toLocaleString()} miles, ` +
+          `and a direct flight takes about ${distance.flightTime}.`,
+      },
+    },
   };
 
   const breadcrumbJsonLd = {
@@ -155,6 +242,12 @@ export default async function ComparePage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
+      {distanceJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(distanceJsonLd) }}
+        />
+      )}
 
       <nav aria-label="Breadcrumb" className="text-sm text-[var(--muted)]">
         <ol className="flex flex-wrap items-center gap-2">
@@ -212,6 +305,35 @@ export default async function ComparePage({
           <VerdictBadge verdict={v} nameA={a.name} nameB={b.name} />
         </div>
       </section>
+
+      {distance && (
+        <section className="mt-12">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
+              How far is {a.name} from {b.name}?
+            </h2>
+            <p className="mt-3 text-base md:text-lg leading-relaxed">
+              {a.name}, {a.state_code} is about{" "}
+              <strong className="tabular-nums">
+                {distance.milesRounded.toLocaleString()} miles
+              </strong>{" "}
+              ({distance.kmRounded.toLocaleString()} km) from {b.name},{" "}
+              {b.state_code} in a straight line. By road, the drive is roughly{" "}
+              <strong className="tabular-nums">
+                {distance.drivingMiles.toLocaleString()} miles
+              </strong>
+              , and a direct flight takes about{" "}
+              <strong>{distance.flightTime}</strong>.
+            </p>
+            <p className="mt-3 text-sm text-[var(--muted)]">
+              Driving distance is a rough estimate (great-circle × 1.25 —
+              accurate within ±15% across most US road networks). Flight
+              time uses 500 mph block-to-block; check an airline for exact
+              schedules.
+            </p>
+          </div>
+        </section>
+      )}
 
       <section className="mt-16">
         <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
