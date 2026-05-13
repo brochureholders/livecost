@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-13T02:15:54.352Z",
+  "generated_at": "2026-05-13T09:41:27.972Z",
   "total_cities": 1000,
   "per_dimension": {
     "affordability": {
@@ -8,9 +8,9 @@
       "missing": 0
     },
     "safety": {
-      "present": 967,
+      "present": 969,
       "fallback": 0,
-      "missing": 33
+      "missing": 31
     },
     "climate": {
       "present": 993,
@@ -40,8 +40,8 @@
   },
   "histogram": {
     "5/7": 4,
-    "6/7": 32,
-    "7/7": 964
+    "6/7": 30,
+    "7/7": 966
   },
   "cities_missing_cost_index": [],
   "anomalies": [
@@ -1830,14 +1830,14 @@
       "population": 201615,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "birmingham-al",
@@ -5894,14 +5894,14 @@
       "population": 950203,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "columbus-oh",
