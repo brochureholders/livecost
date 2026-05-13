@@ -20,6 +20,7 @@ import OtherCitiesInState from "@/components/profile/OtherCitiesInState";
 import QualityOfLife from "@/components/profile/QualityOfLife";
 import SalaryCalculator from "@/components/profile/SalaryCalculator";
 import SimilarCities from "@/components/profile/SimilarCities";
+import WhyMoveTo from "@/components/profile/WhyMoveTo";
 
 export const revalidate = 86400; // ISR: refresh daily
 
@@ -223,6 +224,10 @@ export default async function CityProfilePage({
           />
         </section>
       )}
+
+      <section className="mt-16">
+        <WhyMoveTo city={city} />
+      </section>
 
       <section className="mt-16">
         <FAQ city={city} />
