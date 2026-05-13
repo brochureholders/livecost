@@ -119,12 +119,12 @@ export default function ComparisonTable({ a, b }: Props) {
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-[var(--background)] text-left text-[var(--muted)]">
+          <thead className="bg-[var(--border)] text-left text-[var(--foreground)]">
             <tr>
-              <th className="px-5 py-3 font-medium">Metric</th>
-              <th className="px-5 py-3 font-medium">{a.name}</th>
-              <th className="px-5 py-3 font-medium">{b.name}</th>
-              <th className="px-5 py-3 font-medium">Difference</th>
+              <th className="px-5 py-3 font-bold">Metric</th>
+              <th className="px-5 py-3 font-bold">{a.name}</th>
+              <th className="px-5 py-3 font-bold">{b.name}</th>
+              <th className="px-5 py-3 font-bold">Difference</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
