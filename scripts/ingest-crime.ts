@@ -123,7 +123,15 @@ async function fetchJson<T>(url: string, label: string): Promise<T | null> {
       await sleep(backoff);
     }
   }
-  throw new Error(`Failed after ${MAX_RETRIES} retries: ${label} — ${lastErr}`);
+  // After MAX_RETRIES, give up on this agency rather than aborting the
+  // entire run. The caller handles null by skipping the city; the
+  // per-state outcome summary at the end of main() flags partial states
+  // so a flapping window during one state's ingest doesn't lose the
+  // 50 other states' work.
+  console.warn(
+    `  [${label}] giving up after ${MAX_RETRIES} retries: ${lastErr}`,
+  );
+  return null;
 }
 
 function normalize(s: string): string {
