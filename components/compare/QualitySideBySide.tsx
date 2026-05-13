@@ -2,6 +2,12 @@ import type { CityProfile } from "@/lib/cities";
 
 type Props = { a: CityProfile; b: CityProfile };
 
+const CURRENCY = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+
 function num(n: number | null | undefined, digits = 0, unit = "") {
   if (n == null) return "—";
   return `${n.toFixed(digits)}${unit}`;
@@ -10,6 +16,22 @@ function num(n: number | null | undefined, digits = 0, unit = "") {
 function pct(n: number | null | undefined) {
   if (n == null) return "—";
   return `${n.toFixed(1)}%`;
+}
+
+function pctSigned(n: number | null | undefined) {
+  if (n == null) return "—";
+  const sign = n > 0 ? "+" : "";
+  return `${sign}${n.toFixed(1)}%`;
+}
+
+function money(n: number | null | undefined) {
+  if (n == null) return "—";
+  return CURRENCY.format(n);
+}
+
+function index100(n: number | null | undefined) {
+  if (n == null) return "—";
+  return n.toFixed(0);
 }
 
 export default function QualitySideBySide({ a, b }: Props) {
@@ -91,6 +113,31 @@ export default function QualitySideBySide({ a, b }: Props) {
           bValue: num(b.demographics?.median_age, 1),
         },
         {
+          label: "College educated",
+          aValue: pct(a.demographics?.college_educated_pct),
+          bValue: pct(b.demographics?.college_educated_pct),
+        },
+        {
+          label: "Avg commute",
+          aValue: num(a.demographics?.commute_time_avg, 0, " min"),
+          bValue: num(b.demographics?.commute_time_avg, 0, " min"),
+        },
+        {
+          label: "Population growth",
+          aValue: pctSigned(a.demographics?.population_growth_pct),
+          bValue: pctSigned(b.demographics?.population_growth_pct),
+        },
+      ],
+    },
+    {
+      title: "Economy",
+      rows: [
+        {
+          label: "Median income",
+          aValue: money(a.costs?.median_household_income),
+          bValue: money(b.costs?.median_household_income),
+        },
+        {
           label: "Unemployment",
           aValue: pct(a.demographics?.unemployment_rate),
           bValue: pct(b.demographics?.unemployment_rate),
@@ -100,15 +147,31 @@ export default function QualitySideBySide({ a, b }: Props) {
           aValue: pct(a.demographics?.poverty_rate),
           bValue: pct(b.demographics?.poverty_rate),
         },
+      ],
+    },
+    {
+      title: "Housing market",
+      rows: [
         {
-          label: "College educated",
-          aValue: pct(a.demographics?.college_educated_pct),
-          bValue: pct(b.demographics?.college_educated_pct),
+          label: "Median rent",
+          aValue:
+            a.costs?.median_rent != null
+              ? `${money(a.costs.median_rent)}/mo`
+              : "—",
+          bValue:
+            b.costs?.median_rent != null
+              ? `${money(b.costs.median_rent)}/mo`
+              : "—",
         },
         {
-          label: "Avg commute (min)",
-          aValue: num(a.demographics?.commute_time_avg, 0),
-          bValue: num(b.demographics?.commute_time_avg, 0),
+          label: "Median home value",
+          aValue: money(a.costs?.median_home_value),
+          bValue: money(b.costs?.median_home_value),
+        },
+        {
+          label: "Housing index",
+          aValue: index100(a.costs?.housing_index),
+          bValue: index100(b.costs?.housing_index),
         },
       ],
     },
@@ -126,13 +189,21 @@ export default function QualitySideBySide({ a, b }: Props) {
         ? "md:grid-cols-2"
         : "md:grid-cols-1";
 
-  // Quality + demographics ride on different Supabase tables with their own
-  // year columns; show the latest of each side so a stale row doesn't fly
-  // under the radar.
+  // Quality + demographics + costs ride on different Supabase tables with
+  // their own year columns; show the latest of each side so a stale row
+  // doesn't fly under the radar.
   const yearA =
-    Math.max(a.quality?.year ?? 0, a.demographics?.year ?? 0) || null;
+    Math.max(
+      a.quality?.year ?? 0,
+      a.demographics?.year ?? 0,
+      a.costs?.year ?? 0,
+    ) || null;
   const yearB =
-    Math.max(b.quality?.year ?? 0, b.demographics?.year ?? 0) || null;
+    Math.max(
+      b.quality?.year ?? 0,
+      b.demographics?.year ?? 0,
+      b.costs?.year ?? 0,
+    ) || null;
   const yearGap = yearA != null && yearB != null ? Math.abs(yearA - yearB) : 0;
 
   return (
