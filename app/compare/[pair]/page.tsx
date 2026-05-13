@@ -17,13 +17,21 @@ import {
 import { shouldNoIndexComparison } from "@/lib/coverage";
 import { getAreaSqMiles, roundAreaFriendly } from "@/lib/area";
 import {
+  drivingHours,
   estimatedDrivingMiles,
   flightTimeHours,
+  formatDrivingTime,
   formatFlightTime,
   haversineKm,
   haversineMiles,
   roundDistanceFriendly,
 } from "@/lib/distance";
+import {
+  describeOffsetDiff,
+  formatLocalTime,
+  getTimezoneOffset,
+  tzName,
+} from "@/lib/timezone";
 import AdSlot from "@/components/AdSlot";
 import AffordabilityBadge from "@/components/profile/AffordabilityBadge";
 import DataCompletenessBadge from "@/components/DataCompletenessBadge";
@@ -156,12 +164,32 @@ export default async function ComparePage({
       ? (() => {
           const miles = haversineMiles(a.latitude, a.longitude, b.latitude, b.longitude);
           const km = haversineKm(a.latitude, a.longitude, b.latitude, b.longitude);
+          const driveMi = estimatedDrivingMiles(miles);
           return {
             milesExact: miles,
             milesRounded: roundDistanceFriendly(miles),
             kmRounded: roundDistanceFriendly(km),
-            drivingMiles: roundDistanceFriendly(estimatedDrivingMiles(miles)),
+            drivingMiles: roundDistanceFriendly(driveMi),
+            drivingTime: formatDrivingTime(drivingHours(driveMi)),
             flightTime: formatFlightTime(flightTimeHours(miles)),
+          };
+        })()
+      : null;
+
+  // Time-zone difference. Only render the Q&A when the two cities sit in
+  // different US zones — same-zone pairs don't justify their own card.
+  const timezone =
+    a.longitude != null && b.longitude != null
+      ? (() => {
+          const offsetA = getTimezoneOffset(a.state_code, a.longitude);
+          const offsetB = getTimezoneOffset(b.state_code, b.longitude);
+          const diff = describeOffsetDiff(offsetA, offsetB);
+          return {
+            offsetA,
+            offsetB,
+            nameA: tzName(offsetA),
+            nameB: tzName(offsetB),
+            ...diff,
           };
         })()
       : null;
@@ -213,11 +241,54 @@ export default async function ComparePage({
         text:
           `${a.name}, ${a.state_code} is about ${distance.milesRounded.toLocaleString()} miles ` +
           `(${distance.kmRounded.toLocaleString()} km) from ${b.name}, ${b.state_code} in a straight line. ` +
-          `Driving is roughly ${distance.drivingMiles.toLocaleString()} miles, ` +
-          `and a direct flight takes about ${distance.flightTime}.`,
+          `By road, the drive is roughly ${distance.drivingMiles.toLocaleString()} miles, ` +
+          `or about ${distance.drivingTime} of driving at highway speeds.`,
       },
     },
   };
+
+  // Separate Q&A block for flight time — captures "how long is the
+  // flight from X to Y" queries, which are a distinct intent from "how
+  // far is" and rank as their own SERP feature.
+  const flightJsonLd = distance && {
+    "@context": "https://schema.org",
+    "@type": "QAPage",
+    mainEntity: {
+      "@type": "Question",
+      name: `How long is the flight from ${a.name} to ${b.name}?`,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text:
+          `A direct flight from ${a.name}, ${a.state_code} to ${b.name}, ${b.state_code} ` +
+          `takes about ${distance.flightTime}, covering roughly ` +
+          `${distance.milesRounded.toLocaleString()} miles in a straight line at typical ` +
+          `airline cruise speed (~500 mph block-to-block including taxi, climb, and descent). ` +
+          `Connecting itineraries with a layover usually run 1–3 hours longer.`,
+      },
+    },
+  };
+
+  // Time-zone Q&A — only when the two cities sit in different zones.
+  const timezoneJsonLd =
+    timezone && timezone.direction !== "same"
+      ? {
+          "@context": "https://schema.org",
+          "@type": "QAPage",
+          mainEntity: {
+            "@type": "Question",
+            name: `What is the time difference between ${a.name} and ${b.name}?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text:
+                `${a.name}, ${a.state_code} (${timezone.nameA} Time) is ` +
+                `${timezone.diffHours} hour${timezone.diffHours === 1 ? "" : "s"} ` +
+                `${timezone.direction} of ${b.name}, ${b.state_code} (${timezone.nameB} Time). ` +
+                `When it's noon in ${a.name}, it's ` +
+                `${formatLocalTime(12, timezone.offsetA, timezone.offsetB)} in ${b.name}.`,
+            },
+          },
+        }
+      : null;
 
   // Size comparison — captures "is X bigger than Y" queries. We can answer
   // by population (always present), and by land area when the Census
@@ -314,6 +385,18 @@ export default async function ComparePage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(distanceJsonLd) }}
         />
       )}
+      {flightJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(flightJsonLd) }}
+        />
+      )}
+      {timezoneJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(timezoneJsonLd) }}
+        />
+      )}
       {sizeJsonLd && (
         <script
           type="application/ld+json"
@@ -378,7 +461,7 @@ export default async function ComparePage({
         </div>
       </section>
 
-      {(distance || size) && (
+      {(distance || size || (timezone && timezone.direction !== "same")) && (
         <section className="mt-12 grid gap-5 md:grid-cols-2">
           {distance && (
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
@@ -396,12 +479,64 @@ export default async function ComparePage({
                 <strong className="tabular-nums">
                   {distance.drivingMiles.toLocaleString()} miles
                 </strong>
-                , and a direct flight takes about{" "}
-                <strong>{distance.flightTime}</strong>.
+                , or about{" "}
+                <strong>{distance.drivingTime}</strong> behind the wheel at
+                highway speeds.
               </p>
               <p className="mt-3 text-xs text-[var(--muted)]">
-                Driving distance is a rough estimate (great-circle × 1.25).
-                Flight time uses 500 mph block-to-block.
+                Driving distance is a rough estimate (great-circle × 1.25);
+                driving time assumes a 60 mph blended average. Real trips
+                run 10–20% longer with stops.
+              </p>
+            </div>
+          )}
+          {distance && (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
+              <h2 className="text-xl md:text-2xl font-semibold tracking-tight">
+                How long is the flight from {a.name} to {b.name}?
+              </h2>
+              <p className="mt-3 text-base leading-relaxed">
+                A direct flight from {a.name}, {a.state_code} to {b.name},{" "}
+                {b.state_code} takes about{" "}
+                <strong>{distance.flightTime}</strong>, covering roughly{" "}
+                <strong className="tabular-nums">
+                  {distance.milesRounded.toLocaleString()} miles
+                </strong>{" "}
+                in a straight line. Connecting itineraries with a layover
+                typically add 1–3 hours.
+              </p>
+              <p className="mt-3 text-xs text-[var(--muted)]">
+                Block-to-block estimate at ~500 mph cruise, including taxi,
+                climb, and descent — what an airline would publish, not pure
+                airborne time.
+              </p>
+            </div>
+          )}
+          {timezone && timezone.direction !== "same" && (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
+              <h2 className="text-xl md:text-2xl font-semibold tracking-tight">
+                What&apos;s the time difference between {a.name} and {b.name}?
+              </h2>
+              <p className="mt-3 text-base leading-relaxed">
+                {a.name}, {a.state_code} is on{" "}
+                <strong>{timezone.nameA} Time</strong> and {b.name},{" "}
+                {b.state_code} is on <strong>{timezone.nameB} Time</strong>
+                {" "}— a{" "}
+                <strong className="tabular-nums">
+                  {timezone.diffHours}-hour
+                </strong>{" "}
+                difference. When it&apos;s noon in {a.name}, it&apos;s{" "}
+                <strong>
+                  {formatLocalTime(12, timezone.offsetA, timezone.offsetB)}
+                </strong>{" "}
+                in {b.name}, which puts {a.name}{" "}
+                <strong>{timezone.diffHours} hours {timezone.direction}</strong>
+                .
+              </p>
+              <p className="mt-3 text-xs text-[var(--muted)]">
+                Standard-time offsets. Daylight saving applies in both
+                cities for most of the year (exceptions: Hawaii and most
+                of Arizona), and the gap between the two stays the same.
               </p>
             </div>
           )}

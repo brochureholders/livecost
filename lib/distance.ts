@@ -72,3 +72,34 @@ export function formatFlightTime(hours: number): string {
   if (m === 0) return `${h} h`;
   return `${h} h ${m} min`;
 }
+
+/** Estimated driving time in hours assuming a 60 mph blended average
+ *  (interstate cruising minus urban approach + occasional stops). This
+ *  is a deliberately optimistic single-driver number — actual elapsed
+ *  trip time with meals and fuel will be ~15% higher. */
+export function drivingHours(drivingMiles: number): number {
+  return drivingMiles / 60;
+}
+
+/** Format driving time. Sub-hour trips in minutes; 1–10 h rounded to the
+ *  nearest 15 min; longer than that, whole hours (with a day estimate at
+ *  10 h/day for cross-country drives where "47 hours" is hard to parse). */
+export function formatDrivingTime(hours: number): string {
+  if (hours < 1) {
+    const m = Math.round(hours * 60);
+    return `${m} min`;
+  }
+  if (hours < 10) {
+    const totalMinutes = Math.round(hours * 4) * 15;
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    if (m === 0) return `${h} h`;
+    return `${h} h ${m} min`;
+  }
+  const wholeHours = Math.round(hours);
+  if (wholeHours >= 20) {
+    const days = Math.round(wholeHours / 10);
+    return `${wholeHours} hours (about ${days} days at 10 h/day)`;
+  }
+  return `${wholeHours} hours`;
+}
