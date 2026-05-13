@@ -225,13 +225,7 @@ export default async function CityProfilePage({
       )}
 
       <section className="mt-16">
-        <FAQ
-          cityName={city.name}
-          state={city.state}
-          costIndex={costs?.cost_index ?? null}
-          medianRent={costs?.median_rent ?? null}
-          medianIncome={costs?.median_household_income ?? null}
-        />
+        <FAQ city={city} />
       </section>
     </div>
   );
