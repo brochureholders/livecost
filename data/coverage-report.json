@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-13T09:41:27.972Z",
+  "generated_at": "2026-05-13T14:21:40.542Z",
   "total_cities": 1000,
   "per_dimension": {
     "affordability": {
@@ -8,9 +8,9 @@
       "missing": 0
     },
     "safety": {
-      "present": 969,
+      "present": 992,
       "fallback": 0,
-      "missing": 31
+      "missing": 8
     },
     "climate": {
       "present": 993,
@@ -39,9 +39,9 @@
     }
   },
   "histogram": {
-    "5/7": 4,
-    "6/7": 30,
-    "7/7": 966
+    "5/7": 3,
+    "6/7": 9,
+    "7/7": 988
   },
   "cities_missing_cost_index": [],
   "anomalies": [
@@ -742,14 +742,14 @@
       "population": 348547,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "missing",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 5
+      "present": 6
     },
     {
       "slug": "orlando-fl",
@@ -1446,14 +1446,14 @@
       "population": 235845,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "boise-city-id",
@@ -2918,14 +2918,14 @@
       "population": 684103,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "fresno-ca",
@@ -5942,14 +5942,14 @@
       "population": 875045,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "perth-amboy-nj",
@@ -5974,14 +5974,14 @@
       "population": 52851,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "rockwall-tx",
@@ -6150,14 +6150,14 @@
       "population": 44720,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "shakopee-mn",
@@ -8918,14 +8918,14 @@
       "population": 78402,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "frederick-md",
@@ -11238,14 +11238,14 @@
       "population": 62339,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "pontiac-mi",
@@ -11366,14 +11366,14 @@
       "population": 59843,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "springfield-or",
@@ -12022,14 +12022,14 @@
       "population": 58557,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "oak-lawn-il",
@@ -12294,14 +12294,14 @@
       "population": 57066,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "wylie-tx",
@@ -12806,14 +12806,14 @@
       "population": 54287,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "plainfield-nj",
@@ -12950,14 +12950,14 @@
       "population": 53765,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "bozeman-mt",
@@ -13206,14 +13206,14 @@
       "population": 52661,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "grand-island-ne",
@@ -13478,14 +13478,14 @@
       "population": 50975,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "east-hartford-ct",
@@ -13590,14 +13590,14 @@
       "population": 50804,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "grapevine-tx",
@@ -13926,14 +13926,14 @@
       "population": 49587,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "coral-gables-fl",
@@ -14310,14 +14310,14 @@
       "population": 48049,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "roswell-nm",
@@ -15094,14 +15094,14 @@
       "population": 73928,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "broomfield-co",
@@ -15174,14 +15174,14 @@
       "population": 72680,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "baldwin-park-ca",
@@ -15718,14 +15718,14 @@
       "population": 44228,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "salem-ma",
@@ -15862,14 +15862,14 @@
       "population": 44084,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "wilkes-barre-pa",
@@ -15910,14 +15910,14 @@
       "population": 44210,
       "dims": {
         "affordability": "present",
-        "safety": "missing",
+        "safety": "present",
         "climate": "present",
         "walkability": "present",
         "job_market": "present",
         "environment": "present",
         "education": "present"
       },
-      "present": 6
+      "present": 7
     },
     {
       "slug": "concord-nh",
