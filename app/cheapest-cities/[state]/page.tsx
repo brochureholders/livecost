@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getCitiesByState } from "@/lib/cities";
 import { STATES, getStateBySlug, regionPeers } from "@/lib/states";
 import RankedTable from "@/components/ranking/RankedTable";
+import WhyMoveToState from "@/components/ranking/WhyMoveToState";
 
 export const revalidate = 86400;
 
@@ -205,6 +206,10 @@ export default async function CheapestCitiesPage({
         <div className="mt-6">
           <RankedTable cities={ranked} anchorSlug={cheapest?.slug} />
         </div>
+      </section>
+
+      <section className="mt-16">
+        <WhyMoveToState state={state} cities={ranked} />
       </section>
 
       {withData.length >= 2 && cheapest && priciest && (

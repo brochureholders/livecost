@@ -483,10 +483,14 @@ export default function WhyMoveTo({ city }: Props) {
         `If you're weighing a move to ${city.name}, the short answer is that the city has a few genuine arguments going for it — most obviously ${lead.title.toLowerCase()} and ${second.title.toLowerCase()}${tail}. Here's the longer version.`,
         `${city.name} has a handful of real selling points, and they're not the kind of thing you find in a brochure. ${lead.title} and ${second.title.toLowerCase()} are the headliners${tail}. The rest is below.`,
         `People moving to ${city.name} usually have at least one specific reason. Most of them line up with what the data shows: ${lead.title.toLowerCase()}, ${second.title.toLowerCase()}${tail}. Here's what's actually on the table.`,
+        `So why do people move to ${city.name}? The honest answer involves a few specific things the data backs up — most clearly ${lead.title.toLowerCase()} and ${second.title.toLowerCase()}${tail}. The detail on each one is below.`,
+        `Wondering whether you should move to ${city.name}? It depends on what you're optimizing for, but the city has real arguments in its favor: ${lead.title.toLowerCase()} and ${second.title.toLowerCase()}${tail}. The data behind each is below.`,
+        `These are the reasons people actually move to ${city.name}, ordered roughly by what shows up loudest in the data. ${lead.title} and ${second.title.toLowerCase()} lead${tail} — the rest unpacked below.`,
       ])
     : pick(slug, [
         `${city.name} has at least one strong card to play — ${lead.title.toLowerCase()}. Here's the longer version.`,
         `If you're weighing ${city.name}, the strongest single argument is around ${lead.title.toLowerCase()}.`,
+        `Why do people move to ${city.name}? On the data, the answer is largely ${lead.title.toLowerCase()}. The detail is below.`,
       ]);
 
   return (
