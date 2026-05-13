@@ -108,6 +108,11 @@ export default function QualitySideBySide({ a, b }: Props) {
       title: "Demographics",
       rows: [
         {
+          label: "Population",
+          aValue: a.population != null ? a.population.toLocaleString() : "—",
+          bValue: b.population != null ? b.population.toLocaleString() : "—",
+        },
+        {
           label: "Median age",
           aValue: num(a.demographics?.median_age, 1),
           bValue: num(b.demographics?.median_age, 1),
@@ -177,9 +182,14 @@ export default function QualitySideBySide({ a, b }: Props) {
     },
   ];
 
-  const populated = sections.filter((s) =>
-    s.rows.some((r) => r.aValue !== "—" || r.bValue !== "—"),
-  );
+  // Filter rows where BOTH sides are "—" — no signal, just visual noise.
+  // Then drop sections that lose all their rows that way.
+  const populated = sections
+    .map((s) => ({
+      ...s,
+      rows: s.rows.filter((r) => r.aValue !== "—" || r.bValue !== "—"),
+    }))
+    .filter((s) => s.rows.length > 0);
   if (populated.length === 0) return null;
 
   const gridCols =

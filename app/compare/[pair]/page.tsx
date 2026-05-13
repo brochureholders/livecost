@@ -15,6 +15,7 @@ import {
   verdict,
 } from "@/lib/comparison";
 import { shouldNoIndexComparison } from "@/lib/coverage";
+import { getAreaSqMiles, roundAreaFriendly } from "@/lib/area";
 import {
   estimatedDrivingMiles,
   flightTimeHours,
@@ -218,6 +219,71 @@ export default async function ComparePage({
     },
   };
 
+  // Size comparison — captures "is X bigger than Y" queries. We can answer
+  // by population (always present), and by land area when the Census
+  // Gazetteer covers both cities (~999/1000 today).
+  const sizeAreaA = getAreaSqMiles(a.slug);
+  const sizeAreaB = getAreaSqMiles(b.slug);
+  const size =
+    a.population != null && b.population != null
+      ? (() => {
+          const popDiff = a.population! - b.population!;
+          const popBiggerName = popDiff > 0 ? a.name : b.name;
+          const popSmallerName = popDiff > 0 ? b.name : a.name;
+          const popBiggerPop = Math.max(a.population!, b.population!);
+          const popSmallerPop = Math.min(a.population!, b.population!);
+          const popMultiplier = popSmallerPop > 0
+            ? popBiggerPop / popSmallerPop
+            : null;
+          const areaCompare =
+            sizeAreaA != null && sizeAreaB != null
+              ? (() => {
+                  const aMore = sizeAreaA > sizeAreaB;
+                  return {
+                    biggerName: aMore ? a.name : b.name,
+                    smallerName: aMore ? b.name : a.name,
+                    biggerArea: roundAreaFriendly(Math.max(sizeAreaA, sizeAreaB)),
+                    smallerArea: roundAreaFriendly(Math.min(sizeAreaA, sizeAreaB)),
+                  };
+                })()
+              : null;
+          return {
+            popDiff,
+            popBiggerName,
+            popSmallerName,
+            popBiggerPop,
+            popSmallerPop,
+            popMultiplier,
+            areaA: sizeAreaA != null ? roundAreaFriendly(sizeAreaA) : null,
+            areaB: sizeAreaB != null ? roundAreaFriendly(sizeAreaB) : null,
+            areaCompare,
+          };
+        })()
+      : null;
+
+  const sizeJsonLd = size && {
+    "@context": "https://schema.org",
+    "@type": "QAPage",
+    mainEntity: {
+      "@type": "Question",
+      name: `Is ${a.name} bigger than ${b.name}?`,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text:
+          `${size.popBiggerName} has a population of ${size.popBiggerPop.toLocaleString()}, ` +
+          `compared to ${size.popSmallerPop.toLocaleString()} in ${size.popSmallerName}` +
+          (size.popMultiplier && size.popMultiplier >= 1.1
+            ? ` — about ${size.popMultiplier.toFixed(1)}× larger by population`
+            : "") +
+          (size.areaCompare
+            ? `. By land area, ${size.areaCompare.biggerName} covers about ` +
+              `${size.areaCompare.biggerArea.toLocaleString()} sq mi vs ` +
+              `${size.areaCompare.smallerArea.toLocaleString()} sq mi for ${size.areaCompare.smallerName}.`
+            : "."),
+      },
+    },
+  };
+
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -246,6 +312,12 @@ export default async function ComparePage({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(distanceJsonLd) }}
+        />
+      )}
+      {sizeJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(sizeJsonLd) }}
         />
       )}
 
@@ -306,32 +378,82 @@ export default async function ComparePage({
         </div>
       </section>
 
-      {distance && (
-        <section className="mt-12">
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
-            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
-              How far is {a.name} from {b.name}?
-            </h2>
-            <p className="mt-3 text-base md:text-lg leading-relaxed">
-              {a.name}, {a.state_code} is about{" "}
-              <strong className="tabular-nums">
-                {distance.milesRounded.toLocaleString()} miles
-              </strong>{" "}
-              ({distance.kmRounded.toLocaleString()} km) from {b.name},{" "}
-              {b.state_code} in a straight line. By road, the drive is roughly{" "}
-              <strong className="tabular-nums">
-                {distance.drivingMiles.toLocaleString()} miles
-              </strong>
-              , and a direct flight takes about{" "}
-              <strong>{distance.flightTime}</strong>.
-            </p>
-            <p className="mt-3 text-sm text-[var(--muted)]">
-              Driving distance is a rough estimate (great-circle × 1.25 —
-              accurate within ±15% across most US road networks). Flight
-              time uses 500 mph block-to-block; check an airline for exact
-              schedules.
-            </p>
-          </div>
+      {(distance || size) && (
+        <section className="mt-12 grid gap-5 md:grid-cols-2">
+          {distance && (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
+              <h2 className="text-xl md:text-2xl font-semibold tracking-tight">
+                How far is {a.name} from {b.name}?
+              </h2>
+              <p className="mt-3 text-base leading-relaxed">
+                {a.name}, {a.state_code} is about{" "}
+                <strong className="tabular-nums">
+                  {distance.milesRounded.toLocaleString()} miles
+                </strong>{" "}
+                ({distance.kmRounded.toLocaleString()} km) from {b.name},{" "}
+                {b.state_code} in a straight line. By road, the drive is
+                roughly{" "}
+                <strong className="tabular-nums">
+                  {distance.drivingMiles.toLocaleString()} miles
+                </strong>
+                , and a direct flight takes about{" "}
+                <strong>{distance.flightTime}</strong>.
+              </p>
+              <p className="mt-3 text-xs text-[var(--muted)]">
+                Driving distance is a rough estimate (great-circle × 1.25).
+                Flight time uses 500 mph block-to-block.
+              </p>
+            </div>
+          )}
+          {size && (
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 md:p-8">
+              <h2 className="text-xl md:text-2xl font-semibold tracking-tight">
+                Is {a.name} bigger than {b.name}?
+              </h2>
+              <p className="mt-3 text-base leading-relaxed">
+                <strong>{size.popBiggerName}</strong> has a population of{" "}
+                <strong className="tabular-nums">
+                  {size.popBiggerPop.toLocaleString()}
+                </strong>
+                , vs{" "}
+                <strong className="tabular-nums">
+                  {size.popSmallerPop.toLocaleString()}
+                </strong>{" "}
+                in {size.popSmallerName}
+                {size.popMultiplier && size.popMultiplier >= 1.1 ? (
+                  <>
+                    {" "}— about{" "}
+                    <strong className="tabular-nums">
+                      {size.popMultiplier.toFixed(1)}×
+                    </strong>{" "}
+                    larger by population
+                  </>
+                ) : (
+                  <> — about the same size</>
+                )}
+                .
+                {size.areaCompare && (
+                  <>
+                    {" "}By land area,{" "}
+                    <strong>{size.areaCompare.biggerName}</strong> covers
+                    about{" "}
+                    <strong className="tabular-nums">
+                      {size.areaCompare.biggerArea.toLocaleString()} sq mi
+                    </strong>{" "}
+                    vs{" "}
+                    <strong className="tabular-nums">
+                      {size.areaCompare.smallerArea.toLocaleString()} sq mi
+                    </strong>{" "}
+                    for {size.areaCompare.smallerName}.
+                  </>
+                )}
+              </p>
+              <p className="mt-3 text-xs text-[var(--muted)]">
+                Population from US Census ACS. Land area from the Census
+                Gazetteer (city proper, excluding inland water).
+              </p>
+            </div>
+          )}
         </section>
       )}
 
