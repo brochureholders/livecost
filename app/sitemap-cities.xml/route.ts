@@ -17,8 +17,9 @@ export async function GET() {
       priority: profilePriority(slug),
     });
   }
-  // UrbRank Score pages — one per top 600 cities (matches generateStaticParams).
-  for (const slug of slugs.slice(0, 600)) {
+  // UrbRank Score pages — one per city, matching the /cost-of-living
+  // catalog size.
+  for (const slug of slugs) {
     urls.push({
       path: `/should-i-move-to/${slug}`,
       lastmod: today,

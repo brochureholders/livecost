@@ -14,6 +14,7 @@ import {
 import type { DimensionKey } from "@/lib/urbrank-score";
 import { shouldNoIndexCity } from "@/lib/coverage";
 import { generateNarrative } from "@/lib/city-narrative";
+import { SITEMAP } from "@/lib/site";
 import Breadcrumbs from "@/components/profile/Breadcrumbs";
 import ScoreDisplay from "@/components/urbrank/ScoreDisplay";
 
@@ -32,7 +33,7 @@ const DIMENSION_LABELS: Record<DimensionKey, string> = {
 };
 
 export async function generateStaticParams(): Promise<Params[]> {
-  const slugs = await getTopCitySlugs(600);
+  const slugs = await getTopCitySlugs(SITEMAP.profilesLimit);
   return slugs.map((slug) => ({ slug }));
 }
 

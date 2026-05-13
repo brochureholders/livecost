@@ -19,7 +19,7 @@ Statistics (CPI-U).
 | --- | --- |
 | `/` | Marketing home |
 | `/cost-of-living/[slug]` | Per-city profile (1,000 cities pre-rendered) |
-| `/should-i-move-to` + `/[slug]` | UrbRank Score landing + per-city radar (600 pre-rendered) |
+| `/should-i-move-to` + `/[slug]` | UrbRank Score landing + per-city radar (1,000 pre-rendered) |
 | `/compare` + `/[slugA]-vs-[slugB]` | Comparison landing + 31k canonical pairs (top 250 cities) |
 | `/calculator` | Salary-equivalence calculator (URL-shareable query params) |
 | `/quiz` + `/results` | 8-question quiz that re-weights rankings to your priorities |
