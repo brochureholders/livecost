@@ -143,11 +143,13 @@ function normalize(s: string): string {
     .trim();
 }
 
-/** Strip common Census place suffixes to get a bare city name. */
+/** Strip common Census place suffixes (and the "Urban" prefix Hawaii's
+ *  Census records use for Urban Honolulu) to get a bare city name. */
 function cityKey(name: string): string {
   return normalize(
     name
       .replace(/\s+(city|town|village|borough|CDP|municipality|township|metropolitan government|unified government|consolidated government|urban county|balance|planning area).*/i, "")
+      .replace(/^urban\s+/i, "")
       .trim(),
   );
 }
@@ -203,7 +205,35 @@ function findAgency(cityName: string, agencies: Agency[]): Agency | null {
       const name = normalize(a.agency_name);
       return sheriffPatterns.some((re) => re.test(name));
     });
-    return sheriffMatch ?? null;
+    if (sheriffMatch) return sheriffMatch;
+
+    // Fallback 3: hyphenated city-county and metropolitan-prefix variants.
+    //   Charlotte-Mecklenburg Police Department  (Charlotte NC)
+    //   Louisville-Jefferson County Police       (some consolidated cities)
+    //   Metropolitan Nashville Police Department (Nashville-Davidson TN)
+    // First word of the city key drives this — the second hyphen-token is
+    // typically the county or borough sharing the consolidated government.
+    // Constrained to require "police" so we don't accidentally match
+    // unrelated agencies that happen to share a prefix.
+    const firstWord = key.split(/[-\s]/)[0];
+    const fw = firstWord.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (firstWord.length >= 3) {
+      const hyphenated = new RegExp(
+        `^${fw}-\\S+\\s+police( department)?$`,
+        "i",
+      );
+      const metroPrefix = new RegExp(
+        `^(metropolitan|metro)\\s+${fw}\\s+police( department)?$`,
+        "i",
+      );
+      const extendedMatch = agencies.find((a) => {
+        const name = normalize(a.agency_name);
+        return hyphenated.test(name) || metroPrefix.test(name);
+      });
+      if (extendedMatch) return extendedMatch;
+    }
+
+    return null;
   }
 
   // Rank: prefer "City"-type agencies over "County" / "Other" / "University".
@@ -330,6 +360,43 @@ function findCountySheriff(
   );
 }
 
+/** Find a county-level POLICE department for cities served by one instead
+ *  of a sheriff. Covers Fairfax/PWC/Arlington VA, Miami-Dade FL, Nassau
+ *  County NY, Las Vegas Metropolitan PD (covering Clark County CDPs),
+ *  Riley County KS, Honolulu HI (all of Oahu's unincorporated CDPs), and
+ *  Hawaii County (Big Island). */
+function findCountyPolice(
+  countyName: string,
+  agencies: Agency[],
+): Agency | null {
+  const norm = normalize(countyName);
+  if (!norm) return null;
+  const patterns = [
+    `${norm} county police department`,
+    `${norm} county police`,
+    `${norm} police department`,
+    `${norm} police`,
+    // Metropolitan-named variants: "Las Vegas Metropolitan Police
+    // Department" covers Clark County CDPs; "Metropolitan Nashville Police"
+    // covers Davidson County. The Metro/Metropolitan token can precede or
+    // trail the county name.
+    `${norm} metropolitan police department`,
+    `metropolitan ${norm} police department`,
+    `${norm} metro police department`,
+  ];
+  for (const p of patterns) {
+    const found = agencies.find((a) => normalize(a.agency_name) === p);
+    if (found) return found;
+  }
+  // Looser fallback: contains county name AND ends with "police department"
+  return (
+    agencies.find((a) => {
+      const n = normalize(a.agency_name);
+      return n.includes(norm) && /\bpolice( department)?$/.test(n);
+    }) ?? null
+  );
+}
+
 async function fetchStateAgencies(stateCode: string): Promise<Agency[]> {
   const url = `${API_BASE}/cde/agency/byStateAbbr/${stateCode}?api_key=${API_KEY}`;
   const json = await fetchJson<Record<string, Agency[]>>(
@@ -427,16 +494,19 @@ async function main() {
       let usedCountyFallback = false;
 
       if (!agency) {
-        // City has no municipal PD match — try the county sheriff's office
-        // for whichever county the city's centroid falls in. Catches CDPs,
-        // sheriff-only jurisdictions, and consolidated city-counties whose
-        // names don't match a PD pattern.
+        // City has no municipal PD match — try the county-level law-
+        // enforcement agency for whichever county the city's centroid falls
+        // in. First a sheriff (covers most US counties), then a county
+        // police department (covers Fairfax VA, Miami-Dade FL, Nassau NY,
+        // Honolulu HI / Hawaii County, Las Vegas Metro / Clark County NV,
+        // and a handful of other county-PD-only jurisdictions).
         if (city.latitude != null && city.longitude != null) {
           const county = await lookupCounty(city.latitude, city.longitude);
           if (county) {
             const sheriff = findCountySheriff(county.name, agencies);
-            if (sheriff) {
-              agency = sheriff;
+            const countyAgency = sheriff ?? findCountyPolice(county.name, agencies);
+            if (countyAgency) {
+              agency = countyAgency;
               usedCountyFallback = true;
             }
           }
