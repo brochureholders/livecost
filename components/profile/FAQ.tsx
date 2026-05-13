@@ -1,4 +1,6 @@
 import type { CityProfile } from "@/lib/cities";
+import { getElevationFeet, getElevationMeters } from "@/lib/elevation";
+import { isHurricaneRelevant } from "@/lib/hurricane";
 
 type Props = { city: CityProfile };
 
@@ -128,6 +130,38 @@ function walkableAnswer(
   return `${name}'s Walk Score is ${walkScore} out of 100 — classified as "${band}".${transitFragment} ${carHint}`;
 }
 
+/** Adaptive elevation answer — leads with "below sea level" framing for
+ *  coastal cities (Miami gets 640mo on "is Miami below sea level"), and
+ *  flags the "Mile High" tier for genuinely high cities. */
+function elevationAnswer(
+  name: string,
+  elevFt: number | null,
+  elevM: number | null,
+): string | null {
+  if (elevFt == null || elevM == null) return null;
+  const fmt = (n: number) => n.toLocaleString();
+  if (elevFt <= 20) {
+    return `${name} sits at about ${fmt(elevFt)} feet (${fmt(elevM)} m) above sea level — barely above the waterline. Storm surge and sea-level rise are meaningful concerns for low-lying coastal cities like this one.`;
+  }
+  if (elevFt < 500) {
+    return `${name} is at about ${fmt(elevFt)} feet (${fmt(elevM)} m) above sea level — low-lying but not coastal.`;
+  }
+  if (elevFt < 1500) {
+    return `${name} sits at about ${fmt(elevFt)} feet (${fmt(elevM)} m) above sea level.`;
+  }
+  if (elevFt < 3500) {
+    return `${name} is at about ${fmt(elevFt)} feet (${fmt(elevM)} m) above sea level — meaningfully higher than coastal cities but not enough to noticeably affect breathing or cooking.`;
+  }
+  if (elevFt < 5500) {
+    return `${name} is at about ${fmt(elevFt)} feet (${fmt(elevM)} m) above sea level — high enough that visitors from sea level sometimes notice mild altitude effects (shorter breath, faster dehydration) for the first few days.`;
+  }
+  return `${name} sits at about ${fmt(elevFt)} feet (${fmt(elevM)} m) above sea level. At this altitude, expect noticeable initial adjustment: shorter breath, faster dehydration, and longer cooking times. Most people acclimate within a week.`;
+}
+
+function hurricaneAnswer(name: string): string {
+  return `Atlantic hurricane season runs June 1 through November 30, with peak activity from mid-August through October. For ${name}, that's when to watch the National Hurricane Center forecast cone and have an evacuation plan if you live in a low-lying or coastal area.`;
+}
+
 function salaryAnswer(
   name: string,
   costIndex: number | null,
@@ -150,6 +184,10 @@ export default function FAQ({ city }: Props) {
   const q = city.quality;
   const c = city.costs;
 
+  const elevFt = getElevationFeet(city.slug);
+  const elevM = getElevationMeters(city.slug);
+  const hurricaneRelevant = isHurricaneRelevant(city.state_code, city.longitude);
+
   // Build all candidate Q&As, then filter out ones without data.
   const candidates: { q: string; a: string | null }[] = [
     { q: `Does it snow in ${city.name}?`, a: snowAnswer(city.name, q?.avg_temp_winter ?? null) },
@@ -157,6 +195,10 @@ export default function FAQ({ city }: Props) {
     { q: `How hot does ${city.name} get in summer?`, a: hotAnswer(city.name, q?.avg_temp_summer ?? null) },
     { q: `How many sunny days does ${city.name} have?`, a: sunnyAnswer(city.name, q?.sunshine_days ?? null) },
     { q: `What USDA growing zone is ${city.name} in?`, a: growingZoneAnswer(city.name, q?.avg_temp_winter ?? null) },
+    { q: `What is the elevation of ${city.name}?`, a: elevationAnswer(city.name, elevFt, elevM) },
+    ...(hurricaneRelevant
+      ? [{ q: `When is hurricane season in ${city.name}?`, a: hurricaneAnswer(city.name) }]
+      : []),
     { q: `Is ${city.name} safe?`, a: safetyAnswer(city.name, q?.crime_rate_per_100k ?? null) },
     { q: `Is ${city.name} expensive to live in?`, a: expensiveAnswer(city.name, c?.cost_index ?? null) },
     { q: `Is ${city.name} walkable?`, a: walkableAnswer(city.name, q?.walk_score ?? null, q?.transit_score ?? null) },
