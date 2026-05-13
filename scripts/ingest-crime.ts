@@ -174,13 +174,28 @@ function findAgency(cityName: string, agencies: Agency[]): Agency | null {
   });
 
   if (strict.length === 0) {
-    // Fallback: "city of {city} police department" variant
+    // Fallback 1: "city of {city} police department" variant
     const cityOf = new RegExp(
       `^city of ${escaped}(\\s+${AGENCY_SUFFIXES.join("|\\s+")})?$`,
       "i",
     );
-    const fallback = agencies.find((a) => cityOf.test(normalize(a.agency_name)));
-    return fallback ?? null;
+    const cityOfMatch = agencies.find((a) => cityOf.test(normalize(a.agency_name)));
+    if (cityOfMatch) return cityOfMatch;
+
+    // Fallback 2: consolidated city-county sheriff. Jacksonville/Duval, FL
+    // is the canonical example — the city's only law-enforcement agency is
+    // "Jacksonville Sheriff's Office", not a municipal PD and not a
+    // county-named sheriff. Real counties use the county name in their
+    // agency, so this stays safe from false positives.
+    const sheriffPatterns = [
+      new RegExp(`^${escaped}\\s+sheriff'?s?\\s+office$`, "i"),
+      new RegExp(`^${escaped}\\s+sheriff'?s?\\s+department$`, "i"),
+    ];
+    const sheriffMatch = agencies.find((a) => {
+      const name = normalize(a.agency_name);
+      return sheriffPatterns.some((re) => re.test(name));
+    });
+    return sheriffMatch ?? null;
   }
 
   // Rank: prefer "City"-type agencies over "County" / "Other" / "University".
